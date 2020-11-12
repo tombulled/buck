@@ -31,10 +31,6 @@ class Database(object):
             autoflush = False,
         )
 
-        # self.models = utils.Models(self.base_model)
-
-        # self.create_all()
-
     def __str__(self):
         return f'{self.__class__.__name__}()'
 
@@ -49,16 +45,5 @@ class Database(object):
         finally:
             session.close()
 
-    # def make_session(self):
-    #     return self._session_maker()
-    #
-    # def yield_session(self):
-    #     session = self.make_session()
-    #
-    #     try:
-    #         yield session
-    #     finally:
-    #         session.close()
-    #
-    # def create_all(self):
-    #     self.base_model.metadata.create_all(self.engine)
+    def create_all(self, model):
+        model.metadata.create_all(self.engine)

@@ -3,28 +3,41 @@ from . import responses
 from . import middleware
 from . import utils
 from . import orm
+from . import models
 
 """
 TODO:
     * Pass client info through to functions
 """
 
-app = fastapi.FastAPI()
+api = fastapi.FastAPI()
+database = orm.Database('sqlite:///./db.db')
 
-db = orm.Database('sqlite:///./db.db')
+database.create_all(models.BaseModel)
 
 # app.add_middleware(middleware.AwsSignatureV4Middleware)
 
 # ListBuckets
-@app.get('/')
-def read_root(*, db = fastapi.Depends(db)):
-    print(db)
+@api.get('/')
+def read_root(*, db = fastapi.Depends(database)):
+    buckets_data = []
+
+    buckets = db.query(models.Bucket).all()
+
+    for bucket in buckets:
+        bucket_data = \
+        {
+            'CreationDate': utils.iso_datetime(bucket.creation_date),
+            'Name': bucket.name,
+        }
+
+        buckets_data.append(bucket_data)
 
     data = \
     {
         'Buckets': \
         {
-            'Bucket': [],
+            'Bucket': buckets_data,
         },
         'Owner': \
         {
