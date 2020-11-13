@@ -19,7 +19,9 @@ def app \
         (
             port: int = typer.Option(PORT, help = 'Port to run ASGI server on'),
             host: str = typer.Option(HOST, help = 'Host to bind ASGI server on'),
-            db: str = typer.Option(None, help = 'Path to sqlite database'),
+            # db: str = typer.Option(None, help = 'Path to sqlite database'),
+            access_key: str = typer.Option('admin', help = 'Access key (username)'),
+            secret_key: str = typer.Option('admin', help = 'Secret key (password)'),
         ):
     if not (app := get_app(main)):
         raise Exception('no api found :/') # Error

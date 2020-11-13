@@ -1,2 +1,2 @@
 # python-buck
- Simple Python Object Storage Server
+ Pure Python Simple Object Storage Server
