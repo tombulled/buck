@@ -1,8 +1,12 @@
 import dulwich.porcelain as git
+import dulwich.errors
 from pprint import pprint as pp
 import time
 import os
 import os.path
+import pathlib
+import datetime
+import shutil
 
 """
 Currently implemented:
@@ -42,7 +46,6 @@ Currently implemented:
 
 Not listed:
 
-
 Notes:
     * Single branch
     * No remote repos (no pulling, pushing etc.)
@@ -52,6 +55,86 @@ Need:
     * List specific file versions
 """
 
+class Storage(object):
+    def __init__(self, path):
+        path = pathlib.Path(str(path)).absolute()
+
+        path.mkdir(parents=True, exist_ok=True)
+
+        self.path = path
+
+    def list_buckets(self):
+        children = list(self.path.glob('*/'))
+
+        buckets = []
+
+        for child in children:
+            if not child.is_dir():
+                continue
+
+            path = str(child)
+
+            try:
+                repo = git.Repo(path)
+            except dulwich.errors.NotGitRepository:
+                continue
+
+            stat = child.lstat()
+
+            creation_date = datetime.datetime.fromtimestamp(stat.st_ctime)
+
+            bucket = \
+            {
+                'name': child.name,
+                'creation_date': creation_date,
+            }
+
+            buckets.append(bucket)
+
+        return buckets
+
+    def create_bucket(self, name):
+        path = self.path.joinpath(name)
+
+        if path.exists(): return
+
+        path.mkdir()
+
+        repo = git.init(str(path))
+
+        stat = path.lstat()
+
+        creation_date = datetime.datetime.fromtimestamp(stat.st_ctime)
+
+        bucket = \
+        {
+            'name': name,
+            'creation_date': creation_date,
+        }
+
+        return bucket
+
+    def delete_bucket(self, name):
+        path = self.path.joinpath(name)
+
+        if not path.exists(): return
+
+        shutil.rmtree(str(path))
+
+        return True
+
+    def head_bucket(self, name):
+        path = self.path.joinpath(name)
+
+        if not path.exists(): return False
+
+        shutil.rmtree(str(path))
+
+        return True
+
+s = Storage('/tmp/buck-store-2')
+
+"""
 class Repo(object):
     def __init__(self, repo):
         self.repo = repo
@@ -162,3 +245,4 @@ print('Changes:', changes)
 # Get object
 obj = git.get_object_by_path(repo, 'foo.txt')
 print('Object:', obj)
+"""

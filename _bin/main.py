@@ -12,7 +12,6 @@ import fastapi.staticfiles
 import hashlib
 import re
 import os
-import os.path
 
 from pprint import pprint as pp
 
@@ -231,62 +230,121 @@ def get_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
 
     if not object._exists():
         return responses.AwsErrorResponse() # Error!
+    #
+    # pp(dir(request.headers))
+    # pp(dict(request.headers))
+    # pp(request.headers.as_dict())
 
-    file_size = object.path.stat().st_size
+    # response = fastapi.Response(content=b'a'*1024)
+    #
 
-    file = object.path.open('rb')
+    # return response
 
-    content_range = request.headers.get('range')
+    print('GET OBJECT')
 
-    status_code = 200
-    headers = {}
+    import os.path
+    size = os.path.getsize(object.path)
 
-    if content_range is not None:
-        content_range = content_range.strip().lower()
-        content_range = content_range.split('=')[-1]
+    # print(size)
 
-        range_start, range_end, *_ = map(str.strip, (content_range + '-').split('-'))
+    # file = object.path.open('rb')
+    file = open(str(object.path), 'rb')
+
+    range = request.headers.get('range')
+
+    # if range is None:
+    #     return fastapi.responses.StreamingResponse(file, media_type = object.mime_type)
+    # else:
+
+    # response = fastapi.responses.FileResponse(object.path, media_type = object.mime_type)
+    # return fastapi.responses.FileResponse(object.path, media_type = object.mime_type)
+    # response = fastapi.responses.StreamingResponse(file, media_type = object.mime_type)
+
+    # print(object.mime_type)
+
+    if range is not None:
+        # return fastapi.Response(content='hello')
+        # response = fastapi.Response(content='hello')
+        # response = fastapi.responses.FileResponse(object.path)
+        #
+        # response.headers['Content-Length'] = str(size)
+        # response.headers['Accept-Ranges'] = 'bytes'
+        range = range.strip().lower()
+        range = range.split('=')[-1]
+
+        range_start, range_end, *_ = map(str.strip, (range + '-').split('-'))
+
+        # match = re.match(r'bytes=(?P<start>.*)-(?P<end>.+)?', range)
+
+        # range_start = match.group('start')
+        # range_end = match.group('end')
+
+        # range_start = range_start.strip
 
         if not range_start:
             range_start = 0
         if not range_end:
-            range_end = file_size - 1
+            range_end = size - 1
 
         range_start = int(range_start)
-        range_end   = int(range_end)
+        range_end = int(range_end)
 
-        content_length = range_end - range_start + 1
+        # range_end = range_start
+        # range_start = 0
+        # range_start, range_end = 0, range_start
 
-        file = RangeFileWrapper(file, offset=range_start, length=content_length)
-        status_code = 206
+        length = range_end - range_start + 1
 
-        headers['Content-Range'] = f'bytes {range_start}-{range_end}/{file_size}'
+        max_length = 1024 * 1024
+        max_length = 1024 * 512
+
+        # if length > max_length:
+        #     range_end = range_start + max_length
+        #     length = range_end - range_start + 1
+
+        # print('Range:', range_start, range_end, 'Length:', length)
+
+        # file.seek(range_start)
+
+        # response = fastapi.responses.StreamingResponse(RangeFileWrapper(file, offset=range_start, length=length, blksize=1024*1024), media_type = object.mime_type)
+        # response = fastapi.responses.StreamingResponse(file, media_type = object.mime_type, status_code=206)
+        # response = fastapi.responses.StreamingResponse(RangeFileWrapper(file, offset=range_start, length=length), media_type = 'application/octet-stream')
+
+        response = fastapi.responses.StreamingResponse(RangeFileWrapper(file, offset=range_start, length=length), media_type = object.mime_type, status_code=206)
+        # response = fastapi.responses.StreamingResponse(RangeFileWrapper(file, offset=range_start, length=length), media_type = object.mime_type, status_code=200)
+
+        response.headers['Accept-Ranges'] = 'bytes'
+        response.headers['Content-Length'] = str(length)
+        response.headers['Content-Range'] = f'bytes {range_start}-{range_end}/{size}'
+        # response.headers['Connection'] = 'keep-alive'
 
     else:
-        content_length = file_size
-        status_code = 200
+        # import io
+        # file = io.StringIO('hello')
+        # bytes = io.BytesIO(file.read())
+        # response = fastapi.responses.StreamingResponse(file, media_type = object.mime_type)
+        # response = fastapi.responses.StreamingResponse(bytes, media_type = object.mime_type)
+        # response = fastapi.responses.StreamingResponse(file, media_type = 'text/plain')
+        # response = fastapi.responses.FileResponse(object.path, media_type = object.mime_type)
+        # response = fastapi.responses.FileResponse(object.path, media_type = 'application/octet-stream')
+        # response.chunk_size = 1024 * 1024
+        # response.chunk_size = 1024 * 8
+        # response.chunk_size = 1024 * 16
+        # response.chunk_size = 1024
+        # response.chunk_size = 1024 * 1024 * 10
 
-    response = fastapi.responses.StreamingResponse \
-    (
-        content = file,
-        media_type = object.mime_type,
-        status_code = status_code)
+        response = fastapi.responses.FileResponse(object.path, media_type = 'video/mp4; charset=utf-8')
+        response.headers['Content-Length'] = str(size)
 
-    response.headers.update \
-    ({
-        'Accept-Ranges': 'bytes',
-        'Content-Length': str(content_length),
-        **headers,
-    })
+    # return fastapi.responses.StreamingResponse(file, media_type = object.mime_type)
+    # response = fastapi.responses.FileResponse(object.path, media_type = object.mime_type)
 
-    """
-    Ref: https://stackoverflow.com/questions/33208849/python-django-streaming-video-mp4-file-using-httpresponse
-    Ref: https://stackoverflow.com/questions/24976123/streaming-a-video-file-to-an-html5-video-player-with-node-js-so-that-the-video-c/24977085#24977085
+    response.headers['Accept-Ranges'] = 'bytes'
+    response.headers['cache-control'] = 'max-age=3600'
+    response.headers['Connection'] = 'keep-alive'
+    # del response.headers['etag']
 
-    Now that this works, todo:
-        * Create .responses.RangedStreamingResponse
-        * Test with a blob from dulwich repo
-        * Cut out versioning?
-    """
+    # pp(dict(response.headers))
+
 
     return response
