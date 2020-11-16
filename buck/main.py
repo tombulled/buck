@@ -10,9 +10,7 @@ import typing
 import fastapi.responses
 import fastapi.staticfiles
 import hashlib
-import re
 import os
-import os.path
 
 from pprint import pprint as pp
 
@@ -165,6 +163,25 @@ async def put_object \
 
     return fastapi.Response()
 
+@api.get('/{bucket_name}/{object_path:path}')
+def get_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
+    bucket_name = bucket_name.lower()
+    object_path = object_path.lower()
+
+    bucket = storage.get_bucket(bucket_name)
+
+    if bucket is None:
+        return responses.AwsErrorResponse() # Error!
+
+    object = bucket.get_object(object_path)
+
+    if not object._exists():
+        return responses.AwsErrorResponse() # Error!
+
+    file = object.path.open('rb')
+
+    return responses.RangedStreamingResponse(request, file)
+
 # TODO (All Below):
 
 # @api.delete('/{bucket_name}/{object_path:path}')
@@ -185,108 +202,3 @@ async def put_object \
 # def delete_objects(*, request: fastapi.Request, db = fastapi.Depends(database)):
 #     return responses.AwsErrorResponse() # TODO
 #
-
-class RangeFileWrapper(object):
-    def __init__(self, filelike, blksize=8192, offset=0, length=None):
-        self.filelike = filelike
-        self.filelike.seek(offset, os.SEEK_SET)
-        self.remaining = length
-        self.blksize = blksize
-
-    def close(self):
-        if hasattr(self.filelike, 'close'):
-            self.filelike.close()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.remaining is None:
-            # If remaining is None, we're reading the entire file.
-            data = self.filelike.read(self.blksize)
-            if data:
-                return data
-            raise StopIteration()
-        else:
-            if self.remaining <= 0:
-                raise StopIteration()
-            data = self.filelike.read(min(self.remaining, self.blksize))
-            if not data:
-                raise StopIteration()
-            self.remaining -= len(data)
-            return data
-
-
-@api.get('/{bucket_name}/{object_path:path}')
-def get_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
-    bucket_name = bucket_name.lower()
-    object_path = object_path.lower()
-
-    bucket = storage.get_bucket(bucket_name)
-
-    if bucket is None:
-        return responses.AwsErrorResponse() # Error!
-
-    object = bucket.get_object(object_path)
-
-    if not object._exists():
-        return responses.AwsErrorResponse() # Error!
-
-    file_size = object.path.stat().st_size
-
-    file = object.path.open('rb')
-
-    content_range = request.headers.get('range')
-
-    status_code = 200
-    headers = {}
-
-    if content_range is not None:
-        content_range = content_range.strip().lower()
-        content_range = content_range.split('=')[-1]
-
-        range_start, range_end, *_ = map(str.strip, (content_range + '-').split('-'))
-
-        if not range_start:
-            range_start = 0
-        if not range_end:
-            range_end = file_size - 1
-
-        range_start = int(range_start)
-        range_end   = int(range_end)
-
-        content_length = range_end - range_start + 1
-
-        file = RangeFileWrapper(file, offset=range_start, length=content_length)
-        status_code = 206
-
-        headers['Content-Range'] = f'bytes {range_start}-{range_end}/{file_size}'
-
-    else:
-        content_length = file_size
-        status_code = 200
-
-    response = fastapi.responses.StreamingResponse \
-    (
-        content = file,
-        media_type = object.mime_type,
-        status_code = status_code)
-
-    response.headers.update \
-    ({
-        'Accept-Ranges': 'bytes',
-        'Content-Length': str(content_length),
-        **headers,
-    })
-
-    """
-    Ref: https://stackoverflow.com/questions/33208849/python-django-streaming-video-mp4-file-using-httpresponse
-    Ref: https://stackoverflow.com/questions/24976123/streaming-a-video-file-to-an-html5-video-player-with-node-js-so-that-the-video-c/24977085#24977085
-
-    Now that this works, todo:
-        * Create .responses.RangedStreamingResponse
-        * Test with a blob from dulwich repo
-        * Cut out versioning?
-    """
-
-    return response
