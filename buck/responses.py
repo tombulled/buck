@@ -103,6 +103,11 @@ class AwsResponse(starlette.responses.Response):
 
         xml = xmltodict.unparse(data, pretty = self.pretty)
 
+        # Temp!
+        print()
+        print('Response:')
+        print(xml)
+
         return xml.encode()
 
 class AwsErrorResponse(AwsResponse):

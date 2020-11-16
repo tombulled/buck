@@ -3,6 +3,7 @@ from . import middleware
 from . import aws
 from . import storage
 from . import utils
+from . import dependencies
 
 import fastapi
 import datetime
@@ -11,28 +12,16 @@ import fastapi.responses
 import fastapi.staticfiles
 import hashlib
 import os
+import xmltodict
+from typing import Optional
 
-from pprint import pprint as pp
+from pprint import pprint as pp # Dev
 
 # REF: https://docs.aws.amazon.com/AmazonS3/latest/API/s3-api.pdf
 # REF: https://docs.aws.amazon.com/AmazonS3/latest/API/API_Operations_Amazon_Simple_Storage_Service.html
 # REF: https://docs.aws.amazon.com/cli/latest/reference/s3api/
 
 """
-Rename to buckit?
-
-TODO:
-    PutObject
-    HeadObject
-    GetObject
-    ListObjects
-    DeleteObject
-
-    ? DeleteObjects
-    # ListObjectsV2
-    # ListObjectVersions
-    # RestoreObject
-
 Tables:
     bucket: id, name, creation_date, (owner_id)
     user: id, name, secret_key, access_key
@@ -45,8 +34,6 @@ api = fastapi.FastAPI()
 storage = storage.Storage('/tmp/buck-store')
 
 # api.add_middleware(middleware.AwsAuthenticationMiddleware)
-
-api.mount('/static', fastapi.staticfiles.StaticFiles(directory='/home/mint/Videos'), name='static')
 
 class User(object):
     def __init__(self, access_key):
@@ -175,8 +162,6 @@ def get_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
 
     return responses.RangedStreamingResponse(request, file)
 
-# TODO (All Below):
-
 @api.delete('/{bucket_name}/{object_path:path}')
 def delete_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
     bucket_name = bucket_name.lower()
@@ -189,6 +174,9 @@ def delete_object(*, request: fastapi.Request, bucket_name: str, object_path: st
 
     object = bucket.get_object(object_path)
 
+    if object is None:
+        return responses.AwsErrorResponse() # Error!
+
     success = object.delete()
 
     if not success:
@@ -196,7 +184,113 @@ def delete_object(*, request: fastapi.Request, bucket_name: str, object_path: st
 
     return fastapi.Response(status_code = 204)
 
-# @api.post('/')
-# def delete_objects(*, request: fastapi.Request, db = fastapi.Depends(database)):
-#     return responses.AwsErrorResponse() # TODO
-#
+@api.post('/{bucket_name}')
+async def delete_objects \
+        (
+            *,
+            request: fastapi.Request,
+            request_body = fastapi.Depends(dependencies.payload),
+            bucket_name: str,
+            delete: str,
+        ):
+    bucket_name = bucket_name.lower()
+
+    bucket = storage.get_bucket(bucket_name)
+
+    if bucket is None:
+        return responses.AwsErrorResponse() # Error!
+
+    try:
+        deleted_results = []
+        error_results = []
+
+        object_entries = request_body['Delete']['Object']
+
+        for object_entry in object_entries:
+            object_key = object_entry['Key'].lower()
+
+            object = bucket.get_object(object_key)
+
+            success = object.delete() if object is not None else True
+
+            if success:
+                result = \
+                {
+                    # 'DeleteMarker': ,
+                    # 'DeleteMarkerVersionId': ,
+                    'Key': object_key,
+                    # 'VersionId': ,
+                }
+
+                deleted_results.append(result)
+            else:
+                result = \
+                {
+                    'Code': 'AccessDenied', # Temp placeholder
+                    'Key': object_key,
+                    'Message': 'Access Denied', # Temp placeholder
+                    'VersionId': '1', # Temp placeholder
+                }
+
+                error_results.append(result)
+
+        response_data = \
+        {
+            'Deleted': deleted_results,
+            'Error': error_results,
+        }
+
+        return responses.AwsResponse('DeleteResult', response_data, pretty=True)
+    except: # This is kinda cheating
+        return responses.AwsErrorResponse() # Error!
+
+@api.get('/{bucket_name}')
+def list_objects \
+        (
+            *,
+            request: fastapi.Request,
+            bucket_name: str,
+            prefix: Optional[str] = None,
+            list_type: Optional[int] = 1,
+        ):
+    bucket_name = bucket_name.lower()
+
+    bucket = storage.get_bucket(bucket_name)
+
+    if bucket is None:
+        return responses.AwsErrorResponse() # Error!
+
+    contents = []
+
+    if list_type not in (1, 2):
+        return responses.AwsErrorResponse() # Error!
+
+    objects = bucket.list_objects(prefix=prefix)
+
+    for object in objects:
+        object_data = \
+        {
+            'Key': object.name,
+            'LastModified': utils.iso_datetime(object.last_modified_date),
+            'ETag': '', # Temp
+            'Size': object.size,
+            'StorageClass': 'STANDARD', # Temp
+        }
+
+        contents.append(object_data)
+
+    data = \
+    {
+        'IsTruncated': False,
+        # 'Marker': '',
+        # 'NextMarker': '',
+        'Contents': contents,
+        'Name': bucket.name,
+        'Prefix': prefix,
+        # 'Delimeter': '',
+        # 'MaxKeys': '',
+        # 'CommonPrefixes': '',
+        'EncodingType': 'url',
+    }
+
+    return responses.AwsResponse('ListBucketResult', data)

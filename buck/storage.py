@@ -2,6 +2,7 @@ import pathlib
 import datetime
 import shutil
 import magic
+import os
 
 class Object(object):
     def __init__(self, path):
@@ -25,6 +26,8 @@ class Object(object):
             'name': self.name,
             'creation_date': self.creation_date,
             'mime_type': self.mime_type,
+            'last_modified': self.last_modified_date,
+            'size': self.size,
         }
 
         return data
@@ -53,11 +56,19 @@ class Object(object):
         return datetime.datetime.fromtimestamp(self.path.lstat().st_ctime)
 
     @property
+    def last_modified_date(self):
+        return datetime.datetime.fromtimestamp(self.path.lstat().st_mtime)
+
+    @property
+    def size(self):
+        return self.path.lstat().st_size
+
+    @property
     def mime_type(self):
         return magic.from_file(str(self.path), mime = True)
 
     def delete(self):
-        if not self._exists(): return False
+        if not self._exists(): return True
 
         self.path.unlink()
 
@@ -128,6 +139,27 @@ class Bucket(object):
         object = Object(path)
 
         return object
+
+    def list_objects(self, *, prefix=''):
+        if prefix:
+            tree = self.path.joinpath(prefix)
+        else:
+            tree = self.path
+
+        if not tree.is_dir():
+            return [] # Error
+
+        for path, dirs, files in os.walk(tree):
+            path = pathlib.Path(path)
+
+            print(path, dirs, files)
+
+            for file in files:
+                file_path = path.joinpath(file)
+                
+                object = Object(file_path)
+
+                yield object
 
 class Storage(object):
     def __init__(self, path):
