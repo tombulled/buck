@@ -5,12 +5,6 @@ import starlette.middleware.base
 import urllib.parse
 import datetime
 
-class RequestBodyMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        request.state.body = await request.body()
-        
-        return await call_next(request)
-
 class AwsAuthenticationSignatureV2Middleware(starlette.middleware.base.BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         return responses.AwsErrorResponse() # Error: not supported

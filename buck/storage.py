@@ -1,8 +1,6 @@
 import pathlib
 import datetime
 import shutil
-import dulwich.errors
-import dulwich.porcelain
 import magic
 
 class Object(object):
@@ -57,6 +55,13 @@ class Object(object):
     @property
     def mime_type(self):
         return magic.from_file(str(self.path), mime = True)
+
+    def delete(self):
+        if not self._exists(): return False
+
+        self.path.unlink()
+
+        return True
 
 class Bucket(object):
     def __init__(self, path):
@@ -123,12 +128,6 @@ class Bucket(object):
         object = Object(path)
 
         return object
-
-class VersionedBucket(Bucket):
-    def _touch(self):
-        super()._touch()
-
-        dulwich.porcelain.init(self.path)
 
 class Storage(object):
     def __init__(self, path):
@@ -209,23 +208,3 @@ class Storage(object):
         bucket = self._to_bucket(path)
 
         return bucket._exists()
-
-class VersionedStorage(Storage):
-    @staticmethod
-    def _is_repo(path):
-        try:
-            repo = dulwich.porcelain.Repo(str(path))
-
-            return True
-        except dulwich.errors.NotGitRepository:
-            return False
-
-    @classmethod
-    def _to_bucket(cls, path):
-        if cls._is_repo(path):
-            return VersionedBucket(path)
-
-        return Bucket(path)
-
-    def create_bucket(self, name):
-        return self._create_bucket(name, VersionedBucket)

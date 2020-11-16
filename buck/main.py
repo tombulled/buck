@@ -42,20 +42,11 @@ Version id of object: commit id
 """
 
 api = fastapi.FastAPI()
-# storage = storage.Storage('/tmp/buck-store')
-storage = storage.VersionedStorage('/tmp/buck-store')
+storage = storage.Storage('/tmp/buck-store')
 
 # api.add_middleware(middleware.AwsAuthenticationMiddleware)
-api.add_middleware(middleware.RequestBodyMiddleware)
 
 api.mount('/static', fastapi.staticfiles.StaticFiles(directory='/home/mint/Videos'), name='static')
-
-# Temp
-# @api.middleware('http')
-# async def middleware_test(request, call_next):
-#     print('Request Body:', await request.body())
-#
-#     return await call_next(request)
 
 class User(object):
     def __init__(self, access_key):
@@ -154,12 +145,14 @@ async def put_object \
     bucket_name = bucket_name.lower()
     object_path = object_path.lower()
 
+    request_body = await request.body()
+
     bucket = storage.get_bucket(bucket_name)
 
     if bucket is None:
         return responses.AwsErrorResponse() # Error!
 
-    object = bucket.put_object(object_path, request.state.body)
+    object = bucket.put_object(object_path, request_body)
 
     return fastapi.Response()
 
@@ -184,19 +177,24 @@ def get_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
 
 # TODO (All Below):
 
-# @api.delete('/{bucket_name}/{object_path:path}')
-# def delete_object(*, request: fastapi.Request, db = fastapi.Depends(database), bucket_name: str, object_path: str):
-#     bucket_name = bucket_name.lower()
-#     object_path = object_path.lower()
-#
-#     bucket = storage.get_bucket(bucket_name)
-#
-#     if bucket is None:
-#         return responses.AwsErrorResponse() # Error!
-#
-#     object = bucket.get_object(object_path, request.state.body)
-#
-#     return responses.AwsErrorResponse() # TODO
+@api.delete('/{bucket_name}/{object_path:path}')
+def delete_object(*, request: fastapi.Request, bucket_name: str, object_path: str):
+    bucket_name = bucket_name.lower()
+    object_path = object_path.lower()
+
+    bucket = storage.get_bucket(bucket_name)
+
+    if bucket is None:
+        return responses.AwsErrorResponse() # Error!
+
+    object = bucket.get_object(object_path)
+
+    success = object.delete()
+
+    if not success:
+        return responses.AwsErrorResponse() # Error!
+
+    return fastapi.Response(status_code = 204)
 
 # @api.post('/')
 # def delete_objects(*, request: fastapi.Request, db = fastapi.Depends(database)):
