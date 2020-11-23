@@ -112,12 +112,13 @@ class AwsResponse(starlette.responses.Response):
 
 class AwsErrorResponse(AwsResponse):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('status_code', 404) # Just temporarily
-
         super().__init__('Error', *args, **kwargs)
 
-    def render(self, content) -> bytes:
+    def render(self, error: dict) -> bytes:
         return super().render \
         ({
-            'Code': 'Some error code etc.'
+            'Code':      error.get('code', ''),
+            'Message':   error.get('message', ''),
+            'Resource':  '', # Temp
+            'RequestId': '', # Temp
         })

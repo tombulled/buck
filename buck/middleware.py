@@ -110,3 +110,9 @@ class AwsAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
             return responses.AwsErrorResponse() # Error
 
         return await middleware[algorithm_version](self.app).dispatch(request, call_next)
+
+class AwsAnonymousAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        request.state.access_key = 'anonymous'
+
+        return await call_next(request)

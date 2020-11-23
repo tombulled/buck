@@ -1,37 +1,64 @@
-from . import main
+from . import router
+from . import middleware
+from . import storage
+from . import responses
+from . import exceptions
 
 import uvicorn
 import fastapi
 import typer
 
+api = fastapi.FastAPI()
 cli = typer.Typer()
 
-def get_app(module):
-    for attr_key, attr_val in main.__dict__.items():
-        if isinstance(attr_val, fastapi.FastAPI):
-            return f'{module.__name__}:{attr_key}'
+@api.exception_handler(exceptions.S3Error)
+async def exception_handler(request: fastapi.Request, exception: exceptions.S3Error):
+    status_code = exception.status_code or 400
+
+    error = \
+    {
+        'code':    exception.code,
+        'message': exception.description,
+    }
+
+    return responses.AwsErrorResponse(error, status_code = status_code)
+
+api.include_router(router.router)
 
 # Defaults
 HOST = '127.0.0.1'
 PORT = 8000
+DIR  = '.'
 
 def app \
         (
-            port: int = typer.Option(PORT, help = 'Port to run ASGI server on'),
-            host: str = typer.Option(HOST, help = 'Host to bind ASGI server on'),
-            # db: str = typer.Option(None, help = 'Path to sqlite database'),
-            access_key: str = typer.Option('admin', help = 'Access key (username)'),
-            secret_key: str = typer.Option('admin', help = 'Secret key (password)'),
+            port: int = typer.Option(PORT, help = 'Port to bind server to'),
+            host: str = typer.Option(HOST, help = 'Host to bind server to'),
+            dir:  str = typer.Option(DIR,  help = 'Directory to serve'),
+            auth: str = typer.Option(None, help = 'Auth to use for server in form: `key` or `access_key:secret_key`'),
         ):
-    if not (app := get_app(main)):
-        raise Exception('no api found :/') # Error
+    if auth is not None:
+        chunks = auth.split(':')
+
+        if len(chunks) == 1:
+            access_key = chunks[0]
+            secret_key = chunks[0]
+        else:
+            access_key, secret_key, *_ = chunks
+
+        api.add_middleware(middleware.AwsAuthenticationMiddleware)
+    else:
+        api.add_middleware(middleware.AwsAnonymousAuthenticationMiddleware)
+
+    # api.storage = storage.SimpleStorageService()
+    api.storage = storage.FSSimpleStorageService(dir)
 
     uvicorn.run \
     (
-        app,
+        api,
         host = host,
         port = port,
-        log_level='info',
+        log_level = 'info',
     )
 
 if __name__ == '__main__':
