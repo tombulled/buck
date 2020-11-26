@@ -1,8 +1,10 @@
 from . import router
 from . import middleware
-from . import storage
+# from . import storage
 from . import responses
 from . import exceptions
+from . import stack
+from . import s3
 
 import uvicorn
 import fastapi
@@ -11,32 +13,68 @@ import typer
 api = fastapi.FastAPI()
 cli = typer.Typer()
 
-@api.exception_handler(exceptions.S3Error)
-async def exception_handler(request: fastapi.Request, exception: exceptions.S3Error):
-    status_code = exception.status_code or 400
-
-    error = \
-    {
-        'code':    exception.code,
-        'message': exception.description,
-    }
-
-    return responses.AwsErrorResponse(error, status_code = status_code)
-
 api.include_router(router.router)
 
 # Defaults
-HOST = '127.0.0.1'
 PORT = 8000
-DIR  = '.'
+HOST = '127.0.0.1'
+AUTH = None
+MODE = None
+DIR  = None
 
 def app \
         (
             port: int = typer.Option(PORT, help = 'Port to bind server to'),
             host: str = typer.Option(HOST, help = 'Host to bind server to'),
-            dir:  str = typer.Option(DIR,  help = 'Directory to serve'),
-            auth: str = typer.Option(None, help = 'Auth to use for server in form: `key` or `access_key:secret_key`'),
+            auth: str = typer.Option(AUTH, help = 'Auth to use for server in form: `key` or `access_key:secret_key`'),
+            mode: str = typer.Option(MODE, help = 'Mode to use (mem, fs)'),
+            dir:  str = typer.Option(DIR,  help = 'Directory to serve (implies --mode fs)'),
         ):
+    s3_services = \
+    {
+        'mem': \
+        {
+            'service': s3.S3Memory,
+            'args': {},
+        },
+        # 'fs': \
+        # {
+        #     'service': s3.S3FileSystem,
+        #     'args': \
+        #     {
+        #         'path': 'dir',
+        #     },
+        # },
+    }
+
+    if dir is not None and mode is None:
+        mode = 'fs'
+
+    if mode is None:
+        mode = 'fs'
+        dir = '.'
+
+    if mode not in s3_services:
+        modes = tuple(s3_services)
+
+        typer.echo(f'Invalid mode {mode!r}, must be one of: {modes!r}')
+
+        raise typer.Exit(code = 1)
+
+    s3_service = s3_services[mode]['service']
+
+    kwargs = \
+    {
+        kwarg_key: locals().get(var_key)
+        for kwarg_key, var_key in s3_services[mode]['args'].items()
+    }
+
+    api.stack = stack.Stack('buck')
+
+    api.stack.add_service('s3', s3_service)
+
+    user = api.stack.add_user('User')
+
     if auth is not None:
         chunks = auth.split(':')
 
@@ -46,12 +84,48 @@ def app \
         else:
             access_key, secret_key, *_ = chunks
 
-        api.add_middleware(middleware.AwsAuthenticationMiddleware)
-    else:
-        api.add_middleware(middleware.AwsAnonymousAuthenticationMiddleware)
+        user.access_key = access_key
+        user.secret_key = secret_key
 
-    # api.storage = storage.SimpleStorageService()
-    api.storage = storage.FSSimpleStorageService(dir)
+        api.add_middleware \
+        (
+            middleware.AwsAuthenticationMiddleware,
+            stack = api.stack,
+        )
+    else:
+        api.add_middleware \
+        (
+            middleware.AwsAnonymousAuthenticationMiddleware,
+            stack = api.stack,
+            user = user,
+        )
+
+    # Make this exception_handler middleware: AwsExceptionHandlerMiddleware
+    @api.middleware('http')
+    async def middleware_catch_exception(request: fastapi.Request, call_next):
+        exception = None
+
+        try:
+            return await call_next(request)
+        except exceptions.S3Error as error:
+            exception = error
+        except Exception as error:
+            exception = exceptions.S3Error('InternalError')
+
+            exception.description = str(error)
+
+            # Temp?
+            raise error
+
+        status_code = exception.status_code or 400
+
+        error = \
+        {
+            'code':    exception.code,
+            'message': exception.description,
+        }
+
+        return responses.AwsErrorResponse(error, status_code = status_code)
 
     uvicorn.run \
     (

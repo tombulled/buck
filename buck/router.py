@@ -18,8 +18,21 @@ from pprint import pprint as pp # Dev
 
 """
 Next:
+    Users need to be added/registered (with relevant permissions?)
+        Still don't like abstraction of Service and ServiceSession
+
+    Fix authentication to actually check secret key !
+
     Push update to GitHub
-    
+
+    Modes:
+        mem: In-memory
+        fs: File-system
+        git?
+        sqlite?
+
+    The user needs to be authenticated by the service
+
     Make <User> instance an attribute of storage:
         @depend storage
         print(storage.user.id)
@@ -60,8 +73,7 @@ router = fastapi.APIRouter()
 @router.get('/')
 def list_buckets \
         (
-            storage = fastapi.Depends(dependencies.storage),
-            user = fastapi.Depends(dependencies.user),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
     data = \
     {
@@ -73,13 +85,13 @@ def list_buckets \
                     'Name': bucket.name,
                     'CreationDate': bucket.creation_date,
                 }
-                for bucket in storage.list_buckets()
+                for bucket in s3.list_buckets()
             ],
         },
         'Owner': \
         {
-            'DisplayName': user.display_name,
-            'ID': user.id,
+            'DisplayName': s3.session.user.name,
+            'ID': s3.session.user.id,
         },
     }
 
@@ -89,24 +101,24 @@ def list_buckets \
 def create_bucket \
         (
             bucket_name: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
-    bucket = storage.create_bucket(bucket_name)
+    s3.create_bucket(bucket_name)
 
-    return fastapi.responses.RedirectResponse(url = f'/{bucket.name}')
+    return fastapi.responses.RedirectResponse(url = f'/{bucket_name}')
 
 @router.head('/{bucket_name}')
 def head_bucket \
         (
             bucket_name: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
             headers = fastapi.Depends(dependencies.amz_headers),
         ):
     expected_bucket_owner = headers.get('expected-bucket-owner')
 
-    storage.head_bucket \
+    s3.head_bucket \
     (
-        name = bucket_name,
+        name           = bucket_name,
         expected_owner = expected_bucket_owner,
     )
 
@@ -116,9 +128,9 @@ def head_bucket \
 def delete_bucket \
         (
             bucket_name: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
-    storage.delete_bucket(bucket_name)
+    s3.delete_bucket(bucket_name)
 
     return fastapi.Response(status_code = 204)
 
@@ -128,13 +140,11 @@ async def put_object \
             request: fastapi.Request,
             bucket_name: str,
             object_key: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
     request_body = await request.body()
 
-    bucket = storage.get_bucket(bucket_name)
-
-    bucket.put_object(object_key, request_body)
+    s3.put_object(bucket_name, object_key, request_body)
 
     return fastapi.Response()
 
@@ -144,26 +154,20 @@ def get_object \
             request: fastapi.Request,
             bucket_name: str,
             object_key: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
-    bucket = storage.get_bucket(bucket_name)
+    object_data = s3.get_object(bucket_name, object_key)
 
-    object = bucket.get_object(object_key)
-
-    file = object.open()
-
-    return responses.RangedStreamingResponse(request, file)
+    return responses.RangedStreamingResponse(request, object_data)
 
 @router.delete('/{bucket_name}/{object_key:path}')
 def delete_object \
         (
             bucket_name: str,
             object_key: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
-    bucket = storage.get_bucket(bucket_name)
-
-    bucket.delete_object(object_key)
+    s3.delete_object(bucket_name, object_key)
 
     return fastapi.Response(status_code = 204)
 
@@ -172,11 +176,9 @@ def head_object \
         (
             bucket_name: str,
             object_key: str,
-            storage = fastapi.Depends(dependencies.storage),
+            s3 = fastapi.Depends(dependencies.s3),
         ):
-    bucket = storage.get_bucket(bucket_name)
-
-    bucket.head_object(object_key)
+    s3.head_object(bucket_name, object_key)
 
     return fastapi.Response()
 

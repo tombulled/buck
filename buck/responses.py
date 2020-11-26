@@ -5,6 +5,7 @@ import xmltodict
 import magic
 import os
 from typing import IO, Generator
+import io
 
 class RangedStreamingResponse(starlette.responses.StreamingResponse):
     chunk_size = 8192
@@ -14,8 +15,10 @@ class RangedStreamingResponse(starlette.responses.StreamingResponse):
             kwargs['media_type'] = magic.from_buffer(file.read(2048), mime = True)
 
             file.seek(0)
-
-        file_size = os.fstat(file.fileno()).st_size
+            
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0, os.SEEK_SET)
 
         content_range = request.headers.get('range')
 

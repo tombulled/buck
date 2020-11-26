@@ -1,7 +1,8 @@
-from buck import storage
+from buck import stack
+from buck.s3 import entities
 from pprint import pprint as pp
 
-# s = storage.Storage('/tmp/buck-store')
-s = storage.SimpleStorageService()
-
-b = storage.FSBucket('/tmp/buck-store/hello')
+d = entities.Date()
+r = entities.Region('us-east-2')
+b = entities.Bucket('bucket')
+o = entities.Object('a/b', bucket)

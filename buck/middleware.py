@@ -1,15 +1,22 @@
 from . import responses
 from . import aws
+from . import exceptions
 
 import starlette.middleware.base
 import urllib.parse
 import datetime
 
-class AwsAuthenticationSignatureV2Middleware(starlette.middleware.base.BaseHTTPMiddleware):
+class AwsAuthenticationSignatureMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+    def __init__(self, app, *, stack):
+        super().__init__(app)
+
+        self.stack = stack
+
+class AwsAuthenticationSignatureV2Middleware(AwsAuthenticationSignatureMiddleware):
     async def dispatch(self, request, call_next):
         return responses.AwsErrorResponse() # Error: not supported
 
-class AwsAuthenticationSignatureV4Middleware(starlette.middleware.base.BaseHTTPMiddleware):
+class AwsAuthenticationSignatureV4Middleware(AwsAuthenticationSignatureMiddleware):
     @staticmethod
     async def parse_request(request):
         uri = request.scope['path']
@@ -44,17 +51,17 @@ class AwsAuthenticationSignatureV4Middleware(starlette.middleware.base.BaseHTTPM
         authorization = request.headers.get('Authorization')
 
         if authorization is None:
-            return responses.AwsErrorResponse() # Error!
+            raise exceptions.S3Error('AccessDenied')
 
         auth = signer.parse_authorization(authorization)
 
         if auth is None:
-            return responses.AwsErrorResponse() # Error!
+            raise exceptions.S3Error('AuthorizationHeaderMalformed')
 
         data = await self.parse_request(request)
 
         if data is None:
-            return responses.AwsErrorResponse() # Error!
+            raise exceptions.S3Error('InvalidArgument')
 
         for header_name in tuple(data['headers']):
             for signed_header_name in auth['signed_headers']:
@@ -63,10 +70,12 @@ class AwsAuthenticationSignatureV4Middleware(starlette.middleware.base.BaseHTTPM
             else:
                 data['headers'].pop(header_name)
 
+        user = self.stack.get_user(auth['credential']['access_key'])
+
         signature = signer.create_signature \
         (
             access_key = auth['credential']['access_key'],
-            secret_key = 'admin', # NOTE: This is TEMP, needs to be acquired
+            secret_key = user.secret_key,
             date = data['date'],
             service = auth['credential']['service'],
             region = auth['credential']['region'],
@@ -81,20 +90,25 @@ class AwsAuthenticationSignatureV4Middleware(starlette.middleware.base.BaseHTTPM
 
         # Authentication invalid
         if signature != auth['signature']:
-            return responses.AwsErrorResponse() # Error!
+            raise exceptions.S3Error('SignatureDoesNotMatch')
 
-        request.state.access_key = auth['credential']['access_key']
+        request.state.session = self.stack.session(user)
 
         response = await call_next(request)
 
         return response
 
 class AwsAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+    def __init__(self, app, *, storage):
+        super().__init__(app)
+
+        self.storage = storage
+
     async def dispatch(self, request, call_next):
         authorization = request.headers.get('Authorization')
 
         if authorization is None:
-            return responses.AwsErrorResponse() # Error
+            raise exceptions.S3Error('AccessDenied')
 
         algorithm = authorization.strip().split()[0].upper()
 
@@ -107,12 +121,18 @@ class AwsAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
         }
 
         if algorithm_version not in middleware:
-            return responses.AwsErrorResponse() # Error
+            raise exceptions.S3Error('InvalidEncryptionAlgorithmError')
 
-        return await middleware[algorithm_version](self.app).dispatch(request, call_next)
+        return await middleware[algorithm_version](self.app, storage = self.storage).dispatch(request, call_next)
 
-class AwsAnonymousAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+class AwsAnonymousAuthenticationMiddleware(AwsAuthenticationSignatureMiddleware):
+    def __init__(self, app, *, user, **kwargs):
+        super().__init__(app, **kwargs)
+
+        self.user = user
+        self.session = self.stack.session(self.user)
+
     async def dispatch(self, request, call_next):
-        request.state.access_key = 'anonymous'
+        request.state.session = self.session
 
         return await call_next(request)

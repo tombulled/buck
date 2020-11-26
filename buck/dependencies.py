@@ -2,26 +2,6 @@ import fastapi
 import xmltodict
 import requests.structures
 
-import hashlib
-
-class User(object):
-    def __init__(self, access_key):
-        self.access_key = access_key
-
-    @property
-    def id(self) -> str:
-        if self.access_key:
-            return hashlib.md5(self.access_key.encode()).hexdigest()
-
-        return ''
-
-    @property
-    def display_name(self) -> str:
-        if self.access_key:
-            return self.access_key
-
-        return ''
-
 async def payload(request: fastapi.Request):
     return xmltodict.parse(await request.body())
 
@@ -36,15 +16,6 @@ def attr(name: str, default = None):
         return getattr(request.app, name, default)
 
     return wrapper
-
-def storage(request: fastapi.Request):
-    return attr('storage')(request)
-
-def user(request: fastapi.Request):
-    access_key = state('access_key')(request)
-
-    if access_key:
-        return User(access_key)
 
 def header(name: str, default = None):
     def wrapper(request: fastapi.Request):
@@ -72,3 +43,21 @@ def amz_headers(request: fastapi.Request):
             headers[header_key] = header_val
 
     return requests.structures.CaseInsensitiveDict(headers)
+
+def stack(request: fastapi.Request):
+    return api.stack
+
+def session(request: fastapi.Request):
+    return state('session')(request)
+
+def service(name):
+    def wrapper(request: fastapi.Request):
+        return session(request).service(name)
+
+    return wrapper
+
+def s3(request: fastapi.Request):
+    return service('s3')(request)
+
+def storage(request: fastapi.Request): # TEMP: DELETE ME
+    return

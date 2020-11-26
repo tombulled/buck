@@ -81,11 +81,14 @@ class FSBucket(memory.Bucket):
     def head_object(self, key):
         self.get_object(key)
 
-class FSSimpleStorageService(memory.SimpleStorageService):
-    def __init__(self, path):
-        self._path = pathlib.Path(str(path)).absolute()
+class FSSimpleStorageServiceSession(memory.SimpleStorageServiceSession):
+    def __init__(self, *args, **kwargs):
+        # self._path = pathlib.Path(str(path)).absolute()
+        #
+        # super().__init__()
+        super().__init__(*args, **kwargs)
 
-        super().__init__()
+        self._path = self._service._path
 
     def get_bucket(self, name):
         path = self._path.joinpath(name)
@@ -127,3 +130,12 @@ class FSSimpleStorageService(memory.SimpleStorageService):
 
     def head_bucket(self, name, **kwargs):
         self.get_bucket(name)
+
+class FSSimpleStorageService(memory.SimpleStorageService):
+    implementation = 'fs'
+    session_class = FSSimpleStorageServiceSession
+
+    def __init__(self, *, path):
+        super().__init__()
+
+        self._path = pathlib.Path(str(path)).absolute()

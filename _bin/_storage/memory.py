@@ -3,6 +3,36 @@ from .. import constants
 
 import datetime
 import io
+import hashlib
+
+class User(object):
+    def __init__(self, access_key):
+        self.__access_key = access_key
+
+    def __repr__(self):
+        return f'<User: {self.access_key}>'
+
+    @property
+    def id(self) -> str:
+        if self.access_key:
+            return hashlib.md5(self.access_key.encode()).hexdigest()
+
+        return ''
+
+    @property
+    def display_name(self) -> str:
+        if self.access_key:
+            return self.access_key
+
+        return ''
+
+    @property
+    def access_key(self) -> str:
+        return self.__access_key
+
+    @property
+    def secret_key(self) -> str:
+        return '<<temp>>' # Temp!
 
 class Model(object):
     def __iter__(self):
@@ -67,7 +97,7 @@ class Object(Model):
     __data: bytes = None
     __last_modified_date = None
 
-    def __init__(self, key, data):
+    def __init__(self, service, bucket, key):
         self.__key = key
         self.__data = data
 
@@ -91,8 +121,15 @@ class Object(Model):
     def last_modified_date(self):
         return self.__last_modified_date
 
+    @property
+    def arn(self):
+        return f'arn:aws:s3::{bucket_name}'
+
     def open(self):
         return io.BytesIO(self.__data)
+
+    def write(self, data):
+        self.__data = data
 
 class Bucket(Model):
     __name = None
@@ -101,7 +138,7 @@ class Bucket(Model):
 
     __objects = {}
 
-    def __init__(self, name, region = Region('us-east-2')):
+    def __init__(self, service, name, region = Region('us-east-2')): # region shouldn't be here??
         self.__name = name
         self.__region = region
         self.__creation_date = Date(datetime.datetime.now())
@@ -151,38 +188,59 @@ class Bucket(Model):
     def head_object(self, key):
         self.get_object(key)
 
-class SimpleStorageService(object):
-    __buckets = {}
+class SimpleStorageServiceSession(object):
+    def __init__(self, service, user):
+        self.user = user
 
-    __implementation = 'memory'
+        self._service = service
 
     def __repr__(self):
-        return f'<SimpleStorageService: {self.__implementation}>'
+        return f'<SimpleStorageServiceSession: {self.user.display_name}@{self._service.implementation}>'
 
     def get_bucket(self, name):
-        if name not in self.__buckets:
+        if name not in self._service._buckets:
             raise exceptions.S3Error('NoSuchBucket')
 
-        return self.__buckets[name]
+        return self._service._buckets[name]
 
     def list_buckets(self):
-        for bucket in self.__buckets.values():
+        for bucket in self._service._buckets.values():
             yield bucket
 
     def create_bucket(self, name):
-        if name in self.__buckets:
+        if name in self._service._buckets:
             raise exceptions.S3Error('BucketAlreadyExists')
 
         bucket = Bucket(name)
 
-        self.__buckets[name] = bucket
+        self._service._buckets[name] = bucket
 
         return bucket
 
     def delete_bucket(self, name):
         self.head_bucket(name)
 
-        del self.__buckets[name]
+        del self._service._buckets[name]
 
     def head_bucket(self, name, **kwargs):
         self.get_bucket(name)
+
+# This class handles ACLs etc.?
+class SimpleStorageService(object):
+    implementation = 'memory'
+    session_class = SimpleStorageServiceSession
+
+    _buckets = {}
+
+    def __repr__(self):
+        return f'<SimpleStorageService: {self.implementation}>'
+
+    @classmethod
+    def session(cls, access_key):
+        user = User(access_key)
+
+        return cls.session_class(self, user)
+
+    # Temp?
+    def get_user(self, access_key):
+        return User(access_key)
