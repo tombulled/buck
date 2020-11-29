@@ -9,6 +9,11 @@ from . import s3
 import uvicorn
 import fastapi
 import typer
+import functools
+
+import rich # TODO: Use me!
+
+from pprint import pprint as pp # Dev
 
 api = fastapi.FastAPI()
 cli = typer.Typer()
@@ -34,21 +39,24 @@ def app \
     {
         'mem': \
         {
-            'service': s3.S3Memory,
+            'service': s3.memory.SimpleStorageService,
             'args': {},
         },
-        # 'fs': \
-        # {
-        #     'service': s3.S3FileSystem,
-        #     'args': \
-        #     {
-        #         'path': 'dir',
-        #     },
-        # },
+        'fs': \
+        {
+            'service': s3.fs.SimpleStorageService,
+            'args': \
+            {
+                'path': 'dir',
+            },
+        },
     }
 
     if dir is not None and mode is None:
         mode = 'fs'
+
+    if mode == 'fs' and dir is None:
+        dir = '.'
 
     if mode is None:
         mode = 'fs'
@@ -63,15 +71,19 @@ def app \
 
     s3_service = s3_services[mode]['service']
 
+    vars = dict(locals())
+
     kwargs = \
     {
-        kwarg_key: locals().get(var_key)
+        kwarg_key: vars.get(var_key)
         for kwarg_key, var_key in s3_services[mode]['args'].items()
     }
 
+    s3_service_wrapper = functools.partial(s3_service, **kwargs)
+
     api.stack = stack.Stack('buck')
 
-    api.stack.add_service('s3', s3_service)
+    api.stack.add_service('s3', s3_service_wrapper)
 
     user = api.stack.add_user('User')
 

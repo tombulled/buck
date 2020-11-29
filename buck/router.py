@@ -1,72 +1,8 @@
 from . import responses
-from . import aws
-from . import utils
 from . import dependencies
-from . import exceptions
 
 import fastapi
-import datetime
-import typing
 import fastapi.responses
-import fastapi.staticfiles
-import hashlib
-import os
-import xmltodict
-from typing import Optional
-
-from pprint import pprint as pp # Dev
-
-"""
-Next:
-    Users need to be added/registered (with relevant permissions?)
-        Still don't like abstraction of Service and ServiceSession
-
-    Fix authentication to actually check secret key !
-
-    Push update to GitHub
-
-    Modes:
-        mem: In-memory
-        fs: File-system
-        git?
-        sqlite?
-
-    The user needs to be authenticated by the service
-
-    Make <User> instance an attribute of storage:
-        @depend storage
-        print(storage.user.id)
-    ... Storage instances can only be created when provided with user credentials
-
-    Move all actions to S3 objects to become form:
-            s3.delete_object(bucket_name, object_key)
-        not:
-            bucket.delete_object(object_key)
-        ??
-
-    Validate bucket names, object keys etc.
-    Testcases
-    Logging:
-        e.g. User 'bob' created bucket 'foo'
-    When no user, create 'anonymous' user
-
-Notes:
-    * <User> object?
-    * ACL
-    * Use dynamodb.py as database when made
-    * Use base-classes that allow all, but keep extensible
-
-Attributes:
-    Bucket: name, region, Amazon resource name (ARN), creation date,
-        Access (rights), versioning (enabled), tags, encryption,
-        archive configuration, access logging, CloudTrail data events,
-        event notifications, transfer acceleration, object lock,
-        requester pays, static website hosting
-"""
-
-# REF: https://docs.aws.amazon.com/AmazonS3/latest/API/s3-api.pdf
-# REF: https://docs.aws.amazon.com/AmazonS3/latest/API/API_Operations_Amazon_Simple_Storage_Service.html
-# REF: https://docs.aws.amazon.com/cli/latest/reference/s3api/
 
 router = fastapi.APIRouter()
 
@@ -83,7 +19,7 @@ def list_buckets \
             [
                 {
                     'Name': bucket.name,
-                    'CreationDate': bucket.creation_date,
+                    'CreationDate': str(bucket.creation_date),
                 }
                 for bucket in s3.list_buckets()
             ],

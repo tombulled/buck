@@ -40,8 +40,8 @@ class StackSession(object):
     def __repr__(self):
         return f'<StackSession: stack={self.stack.name!r} user={self.user.name!r}>'
 
-    def service(self, name):
-        return self.stack.get_service(name)(name, self)
+    def service(self, name, *args, **kwargs):
+        return self.stack.get_service(name)(name, self, *args, **kwargs)
 
 class Stack(object):
     __ticker = 0
