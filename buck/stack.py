@@ -6,23 +6,23 @@ access control: bucket policy, bucket acl, object acl
 
 import secrets
 import hashlib
+import pydantic
 
 # utils
 def md5(data):
     return hashlib.md5(str(data).encode()).hexdigest()
 
-class StackUser(object):
-    def __init__(self, access_key, secret_key, name, id):
-        self.access_key = access_key
-        self.secret_key = secret_key
-        self.name = name
-        self.id = id
+class StackUser(pydantic.BaseModel):
+    access_key: str
+    secret_key: str
+    name: str
+    id: str
+
+    class Config:
+        allow_mutation = False
 
     def __repr__(self):
         return f'<StackUser: name={self.name!r}>'
-
-    def __iter__(self):
-        return (item for item in self.__dict__.items())
 
 class StackService(object):
     def __init__(self, name, session):
@@ -87,16 +87,17 @@ class Stack(object):
     def get_user(self, access_key):
         return self.__users.get(access_key)
 
-    def add_user(self, name = None): # Check if already exists etc.
-        user_data = \
+    def add_user(self, **kwargs): # Check if already exists etc.
+        kwargs = \
         {
-            'name': name or self._gen_user_name(),
+            'name': self._gen_user_name(),
             'access_key': self._gen_access_key(),
             'secret_key': self._gen_key(),
             'id': self._gen_user_id(),
+            **kwargs,
         }
 
-        user = StackUser(**user_data)
+        user = StackUser(**kwargs)
 
         self.__users[user.access_key] = user
 

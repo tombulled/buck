@@ -7,6 +7,15 @@ import os
 from typing import IO, Generator
 import io
 
+class RedirectResponse(starlette.responses.RedirectResponse):
+    def __init__(self, **kwargs):
+        url = kwargs.get('content')
+
+        super().__init__(url, status_code = 307)
+
+    def render(self, content: dict) -> bytes:
+        return b''
+
 class RangedStreamingResponse(starlette.responses.StreamingResponse):
     chunk_size = 8192
 
@@ -15,7 +24,7 @@ class RangedStreamingResponse(starlette.responses.StreamingResponse):
             kwargs['media_type'] = magic.from_buffer(file.read(2048), mime = True)
 
             file.seek(0)
-            
+
         file.seek(0, os.SEEK_END)
         file_size = file.tell()
         file.seek(0, os.SEEK_SET)
@@ -88,32 +97,16 @@ class RangedStreamingResponse(starlette.responses.StreamingResponse):
 class AwsResponse(starlette.responses.Response):
     media_type = mimetypes.types_map['.xml']
 
-    def __init__(self, root_node, *args, pretty=True, **kwargs):
-        self.root_node = root_node
-        self.pretty = pretty
-
-        super().__init__(*args, **kwargs)
-
     def render(self, content: dict) -> bytes:
-        data = \
-        {
-            self.root_node: \
-            {
-                '@xmlns': 'http://s3.amazonaws.com/doc/2006-03-01/',
-                **content,
-            },
-        }
+        root_node = next(iter(content))
 
-        xml = xmltodict.unparse(data, pretty = self.pretty)
+        content[root_node]['@xmlns'] = 'http://s3.amazonaws.com/doc/2006-03-01/'
 
-        # Temp!
-        print()
-        print('Response:')
-        print(xml)
+        xml = xmltodict.unparse(content, pretty = True)
 
         return xml.encode()
 
-class AwsErrorResponse(AwsResponse):
+class AwsErrorResponse(AwsResponse): # TODO: Update me!
     def __init__(self, *args, **kwargs):
         super().__init__('Error', *args, **kwargs)
 

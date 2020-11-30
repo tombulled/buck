@@ -1,6 +1,7 @@
 from . import memory
 from . import entities
 from . import validation
+from .types import BucketName, ObjectKey
 
 from .. import stack
 from .. import exceptions
@@ -29,12 +30,20 @@ class SimpleStorageService(stack.StackService):
         children = list(self.path.glob('*/'))
 
         for child in children:
-            if child.is_dir():
-                yield self.get_bucket(child.name)
+            if not child.is_dir():
+                continue
 
-    def get_bucket(self, name):
-        validation.validate_bucket_name(name)
+            bucket_name = BucketName(child.name)
 
+            bucket = self.get_bucket(bucket_name)
+
+            if bucket.owner != self.session.user:
+                continue
+
+            yield bucket
+
+    @validation.validate_arguments
+    def get_bucket(self, name: BucketName):
         self.head_bucket(name)
 
         path = self.path.joinpath(name)
@@ -48,9 +57,8 @@ class SimpleStorageService(stack.StackService):
 
         return bucket
 
-    def create_bucket(self, name):
-        validation.validate_bucket_name(name)
-
+    @validation.validate_arguments
+    def create_bucket(self, name: BucketName):
         path = self.path.joinpath(name)
 
         if path.is_dir():
@@ -58,26 +66,22 @@ class SimpleStorageService(stack.StackService):
 
         path.mkdir(parents = True)
 
-    def delete_bucket(self, name):
-        validation.validate_bucket_name(name)
-
+    @validation.validate_arguments
+    def delete_bucket(self, name: BucketName):
         path = self.path.joinpath(name)
 
         if path.is_dir():
             shutil.rmtree(path)
 
-    def head_bucket(self, name, **kwargs):
-        validation.validate_bucket_name(name)
-
+    @validation.validate_arguments
+    def head_bucket(self, name: BucketName, **kwargs):
         path = self.path.joinpath(name)
 
         if not path.is_dir():
             raise exceptions.S3Error('NoSuchBucket')
 
-    def put_object(self, bucket_name, object_key, object_data):
-        validation.validate_bucket_name(bucket_name)
-        validation.validate_object_key(object_key)
-
+    @validation.validate_arguments
+    def put_object(self, bucket_name: BucketName, object_key: ObjectKey, object_data: bytes):
         bucket = self.get_bucket(bucket_name)
 
         # Create object to validate key
@@ -102,19 +106,16 @@ class SimpleStorageService(stack.StackService):
         with open(path, 'wb') as file:
             file.write(object_data)
 
-    def get_object(self, bucket_name, object_key):
-        validation.validate_bucket_name(bucket_name)
-        validation.validate_object_key(object_key)
-
+    @validation.validate_arguments
+    def get_object(self, bucket_name: BucketName, object_key: ObjectKey):
         self.head_object(bucket_name, object_key)
 
         path = self.path.joinpath(bucket_name, object_key)
 
         return open(path, 'rb')
 
-    def list_objects(self, bucket_name):
-        validation.validate_bucket_name(bucket_name)
-
+    @validation.validate_arguments
+    def list_objects(self, bucket_name: BucketName):
         bucket = self.get_bucket(bucket_name)
 
         tree = self.path
@@ -131,10 +132,8 @@ class SimpleStorageService(stack.StackService):
 
                 yield object
 
-    def delete_object(self, bucket_name, object_key):
-        validation.validate_bucket_name(bucket_name)
-        validation.validate_object_key(object_key)
-
+    @validation.validate_arguments
+    def delete_object(self, bucket_name: BucketName, object_key: ObjectKey):
         self.head_bucket(bucket_name)
 
         path = self.path.joinpath(bucket_name, object_key)
@@ -153,10 +152,8 @@ class SimpleStorageService(stack.StackService):
 
             parent.rmdir()
 
-    def head_object(self, bucket_name, object_key):
-        validation.validate_bucket_name(bucket_name)
-        validation.validate_object_key(object_key)
-
+    @validation.validate_arguments
+    def head_object(self, bucket_name: BucketName, object_key: ObjectKey):
         self.head_bucket(bucket_name)
 
         path = self.path.joinpath(bucket_name, object_key)

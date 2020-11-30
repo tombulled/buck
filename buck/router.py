@@ -1,10 +1,26 @@
 from . import responses
 from . import dependencies
+from .s3.types import BucketName, ObjectKey
 
 import fastapi
 import fastapi.responses
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter \
+(
+    default_response_class = responses.AwsResponse,
+)
+
+"""
+TODO:
+    * Change all actions to use new: return {'ListAllMyBucketsResult': data}
+    * Update responses.AwsErrorResponse to use ^^^
+
+    * Fix package structure for .s3
+    * Should anonymous user be allocated random use?
+    * Flesh out all required headers etc. for simple methods
+    * AWS CLI fails on create-bucket when it returns status_code:307
+    * Still not happy with how validation is carried out :/
+"""
 
 @router.get('/')
 def list_buckets \
@@ -31,17 +47,19 @@ def list_buckets \
         },
     }
 
-    return responses.AwsResponse('ListAllMyBucketsResult', data)
+    return {'ListAllMyBucketsResult': data}
 
-@router.put('/{bucket_name}')
+@router.put('/{bucket_name}', response_class = responses.RedirectResponse)
 def create_bucket \
         (
             bucket_name: str,
             s3 = fastapi.Depends(dependencies.s3),
         ):
+    bucket_name = BucketName(bucket_name)
+
     s3.create_bucket(bucket_name)
 
-    return fastapi.responses.RedirectResponse(url = f'/{bucket_name}')
+    return f'/{bucket_name}'
 
 @router.head('/{bucket_name}')
 def head_bucket \

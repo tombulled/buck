@@ -85,8 +85,6 @@ def app \
 
     api.stack.add_service('s3', s3_service_wrapper)
 
-    user = api.stack.add_user('User')
-
     if auth is not None:
         chunks = auth.split(':')
 
@@ -96,8 +94,12 @@ def app \
         else:
             access_key, secret_key, *_ = chunks
 
-        user.access_key = access_key
-        user.secret_key = secret_key
+        user = api.stack.add_user \
+        (
+            name       = 'User',
+            access_key = access_key,
+            secret_key = secret_key,
+        )
 
         api.add_middleware \
         (
@@ -105,6 +107,11 @@ def app \
             stack = api.stack,
         )
     else:
+        user = api.stack.add_user \
+        (
+            name = 'Anonymous',
+        )
+
         api.add_middleware \
         (
             middleware.AwsAnonymousAuthenticationMiddleware,

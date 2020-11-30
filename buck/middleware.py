@@ -6,17 +6,18 @@ import starlette.middleware.base
 import urllib.parse
 import datetime
 
-class AwsAuthenticationSignatureMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+class BaseAwsAuthenticationSignatureMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
     def __init__(self, app, *, stack):
         super().__init__(app)
 
         self.stack = stack
 
-class AwsAuthenticationSignatureV2Middleware(AwsAuthenticationSignatureMiddleware):
+class AwsAuthenticationSignatureV2Middleware(BaseAwsAuthenticationSignatureMiddleware):
     async def dispatch(self, request, call_next):
-        return responses.AwsErrorResponse() # Error: not supported
+        # return responses.AwsErrorResponse() # Error: not supported
+        raise Exception('ERROR: Not implemented') # Temp!
 
-class AwsAuthenticationSignatureV4Middleware(AwsAuthenticationSignatureMiddleware):
+class AwsAuthenticationSignatureV4Middleware(BaseAwsAuthenticationSignatureMiddleware):
     @staticmethod
     async def parse_request(request):
         uri = request.scope['path']
@@ -98,12 +99,7 @@ class AwsAuthenticationSignatureV4Middleware(AwsAuthenticationSignatureMiddlewar
 
         return response
 
-class AwsAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
-    def __init__(self, app, *, storage):
-        super().__init__(app)
-
-        self.storage = storage
-
+class AwsAuthenticationMiddleware(BaseAwsAuthenticationSignatureMiddleware):
     async def dispatch(self, request, call_next):
         authorization = request.headers.get('Authorization')
 
@@ -116,16 +112,16 @@ class AwsAuthenticationMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
 
         middleware = \
         {
-            'AWS': AwsAuthenticationSignatureV2Middleware,
+            'AWS':  AwsAuthenticationSignatureV2Middleware,
             'AWS4': AwsAuthenticationSignatureV4Middleware,
         }
 
         if algorithm_version not in middleware:
             raise exceptions.S3Error('InvalidEncryptionAlgorithmError')
 
-        return await middleware[algorithm_version](self.app, storage = self.storage).dispatch(request, call_next)
+        return await middleware[algorithm_version](self.app, stack = self.stack).dispatch(request, call_next)
 
-class AwsAnonymousAuthenticationMiddleware(AwsAuthenticationSignatureMiddleware):
+class AwsAnonymousAuthenticationMiddleware(BaseAwsAuthenticationSignatureMiddleware):
     def __init__(self, app, *, user, **kwargs):
         super().__init__(app, **kwargs)
 
