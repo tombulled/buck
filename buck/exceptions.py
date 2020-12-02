@@ -1,4 +1,4 @@
-from . import constants
+from .stack import constants
 
 class S3Error(Exception):
     def __init__(self, code):

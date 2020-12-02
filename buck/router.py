@@ -1,6 +1,5 @@
 from . import responses
 from . import dependencies
-from .s3.types import BucketName, ObjectKey
 
 import fastapi
 import fastapi.responses
@@ -11,9 +10,23 @@ router = fastapi.APIRouter \
 )
 
 """
+
+NOTE: fs !
+
 TODO:
+    * stack.Stack needs major improvements
+    * Make entire project stack-focused? - Each service would have its own api (router) [in this case only one]
+        ... but room for expansion...
+
+    * Use 'arrow' for datetime stuffs
+
     * Change all actions to use new: return {'ListAllMyBucketsResult': data}
     * Update responses.AwsErrorResponse to use ^^^
+    * Apply s3 dependency at router level so each method doesn't need to declare it.
+    * Make mem implementation use in-memory file system!
+        * And make current fs.py use pyfilesystem2
+    * Make all SimpleStorageService's inherit from abc.ABC so functionality is clearly defined
+        * Make all high-levels be wrapped to validate arguments
 
     * Fix package structure for .s3
     * Should anonymous user be allocated random use?
@@ -55,7 +68,8 @@ def create_bucket \
             bucket_name: str,
             s3 = fastapi.Depends(dependencies.s3),
         ):
-    bucket_name = BucketName(bucket_name)
+    # raise Exception('ha')
+    # bucket_name = BucketName(bucket_name)
 
     s3.create_bucket(bucket_name)
 

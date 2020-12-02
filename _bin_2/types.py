@@ -1,8 +1,6 @@
 from .. import exceptions
 from .. import constants
 
-from . import entities
-
 import collections
 import string
 import re

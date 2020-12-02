@@ -107,14 +107,19 @@ class AwsResponse(starlette.responses.Response):
         return xml.encode()
 
 class AwsErrorResponse(AwsResponse): # TODO: Update me!
-    def __init__(self, *args, **kwargs):
-        super().__init__('Error', *args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+        # print('raising aws error response')
+
+        # super().__init__('Error', *args, **kwargs)
 
     def render(self, error: dict) -> bytes:
         return super().render \
         ({
-            'Code':      error.get('code', ''),
-            'Message':   error.get('message', ''),
-            'Resource':  '', # Temp
-            'RequestId': '', # Temp
+            'Error': \
+            {
+                'Code':      error.get('code', ''),
+                'Message':   error.get('message', ''),
+                'Resource':  '', # Temp
+                'RequestId': '', # Temp
+            },
         })

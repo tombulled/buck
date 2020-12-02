@@ -1,17 +1,17 @@
 from . import router
 from . import middleware
-# from . import storage
 from . import responses
 from . import exceptions
 from . import stack
-from . import s3
+# from . import s3
+from .stack.services import s3
 
 import uvicorn
 import fastapi
 import typer
 import functools
 
-import rich # TODO: Use me!
+import fs
 
 from pprint import pprint as pp # Dev
 
@@ -24,66 +24,25 @@ api.include_router(router.router)
 PORT = 8000
 HOST = '127.0.0.1'
 AUTH = None
-MODE = None
-DIR  = None
+MEM  = False
+DIR  = '.'
 
 def app \
         (
-            port: int = typer.Option(PORT, help = 'Port to bind server to'),
-            host: str = typer.Option(HOST, help = 'Host to bind server to'),
-            auth: str = typer.Option(AUTH, help = 'Auth to use for server in form: `key` or `access_key:secret_key`'),
-            mode: str = typer.Option(MODE, help = 'Mode to use (mem, fs)'),
-            dir:  str = typer.Option(DIR,  help = 'Directory to serve (implies --mode fs)'),
+            dir:     str  = typer.Argument(DIR),
+            port:    int  = typer.Option(PORT, help = 'Port to bind server to'),
+            host:    str  = typer.Option(HOST, help = 'Host to bind server to'),
+            auth:    str  = typer.Option(AUTH, help = 'Auth to use for server in form: `key` or `access_key:secret_key`'),
+            virtual: bool = typer.Option(MEM, '--mem', help = 'Whether to use in-memory filesystem'),
         ):
-    s3_services = \
-    {
-        'mem': \
-        {
-            'service': s3.memory.SimpleStorageService,
-            'args': {},
-        },
-        'fs': \
-        {
-            'service': s3.fs.SimpleStorageService,
-            'args': \
-            {
-                'path': 'dir',
-            },
-        },
-    }
-
-    if dir is not None and mode is None:
-        mode = 'fs'
-
-    if mode == 'fs' and dir is None:
-        dir = '.'
-
-    if mode is None:
-        mode = 'fs'
-        dir = '.'
-
-    if mode not in s3_services:
-        modes = tuple(s3_services)
-
-        typer.echo(f'Invalid mode {mode!r}, must be one of: {modes!r}')
-
-        raise typer.Exit(code = 1)
-
-    s3_service = s3_services[mode]['service']
-
-    vars = dict(locals())
-
-    kwargs = \
-    {
-        kwarg_key: vars.get(var_key)
-        for kwarg_key, var_key in s3_services[mode]['args'].items()
-    }
-
-    s3_service_wrapper = functools.partial(s3_service, **kwargs)
+    if virtual:
+        s3_service = s3.S3Mem
+    else:
+        s3_service = functools.partial(s3.S3Fs, dir = dir)
 
     api.stack = stack.Stack('buck')
 
-    api.stack.add_service('s3', s3_service_wrapper)
+    api.stack.add_service('s3', s3_service)
 
     if auth is not None:
         chunks = auth.split(':')
@@ -118,6 +77,13 @@ def app \
             stack = api.stack,
             user = user,
         )
+
+    # @api.exception_handler(exceptions.S3Error)
+    # async def unicorn_exception_handler(request: fastapi.Request, exc: exceptions.S3Error):
+    #     return fastapi.JSONResponse(
+    #         status_code=418,
+    #         content={"message": f"Oops! {exc.name} did something. There goes a rainbow..."},
+    #     )
 
     # Make this exception_handler middleware: AwsExceptionHandlerMiddleware
     @api.middleware('http')

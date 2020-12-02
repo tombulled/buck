@@ -1,6 +1,5 @@
 from .. import constants
 
-from . import validation
 from .types import BucketName, ObjectKey, RegionName, RegionCode
 
 import datetime
@@ -8,7 +7,23 @@ import pydantic
 import string
 import re
 
+import arrow
+
 from typing import Union
+
+class DateTime(arrow.Arrow):
+    def __str__(self):
+        return super().__str__() + 'Z'
+
+class Config:
+    arbitrary_types_allowed: bool = True
+
+def validate_arguments(func):
+    return pydantic.validate_arguments \
+    (
+        func   = func,
+        config = Config,
+    )
 
 class BaseModel(pydantic.BaseModel):
     class Config:
@@ -34,27 +49,6 @@ class BaseModel(pydantic.BaseModel):
     def __str__(self):
         return self.__repr__()
 
-class Date(BaseModel):
-    datetime: datetime.datetime
-
-    def __init__(self, dt: Union[datetime.datetime, None] = None):
-        if dt is None:
-            dt = datetime.datetime.now()
-
-        super().__init__ \
-        (
-            datetime = dt,
-        )
-
-    def __repr__(self):
-        return super().__repr__ \
-        ({
-            'date': str(self),
-        })
-
-    def __str__(self):
-        return f'{self.datetime.isoformat()}Z'
-
 class Region(BaseModel):
     code: RegionCode
     name: RegionName
@@ -62,8 +56,8 @@ class Region(BaseModel):
     def __init__ \
             (
                 self,
-                code: Union[RegionCode, str, None] = None,
-                name: Union[RegionName, str, None] = None,
+                code: Union[str, None] = None,
+                name: Union[str, None] = None,
             ):
         if code is not None:
             code = RegionCode(code)
@@ -89,24 +83,19 @@ class Bucket(BaseModel):
     name: BucketName
     region: Region
     arn: str
-    creation_date: Date
+    creation_date: DateTime
 
-    @validation.validate_arguments
+    @validate_arguments
     def __init__ \
             (
                 self,
-                name: Union[BucketName, str],
+                name: str,
                 region: Region,
-                creation_date: Union[Date, datetime.datetime],
+                creation_date: DateTime,
             ):
-        if isinstance(creation_date, datetime.datetime):
-            creation_date = Date(creation_date)
-
-        name = BucketName(name)
-
         super().__init__ \
         (
-            name          = name,
+            name          = BucketName(name),
             region        = region,
             arn           = f'arn:aws:s3::{name!s}',
             creation_date = creation_date,
@@ -123,24 +112,19 @@ class Object(BaseModel):
     bucket: Bucket
     key: ObjectKey
     arn: str
-    last_modified_date: Date
+    last_modified_date: DateTime
 
-    @validation.validate_arguments
+    @validate_arguments
     def __init__ \
             (
                 self,
-                key: Union[ObjectKey, str],
+                key: str,
                 bucket: Bucket,
-                last_modified_date: Union[Date, datetime.datetime],
+                last_modified_date: DateTime,
             ):
-        if isinstance(last_modified_date, datetime.datetime):
-            last_modified_date = Date(last_modified_date)
-
-        key = ObjectKey(key)
-
         super().__init__ \
         (
-            key                = key,
+            key                = ObjectKey(key),
             bucket             = bucket,
             arn                = f'{bucket.arn!s}:{key!s}',
             last_modified_date = last_modified_date,

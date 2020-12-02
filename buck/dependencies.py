@@ -58,6 +58,3 @@ def service(name):
 
 def s3(request: fastapi.Request):
     return service('s3')(request)
-
-def storage(request: fastapi.Request): # TEMP: DELETE ME
-    return

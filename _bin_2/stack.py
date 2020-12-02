@@ -8,40 +8,11 @@ import secrets
 import hashlib
 import pydantic
 
+from .stack.servicess3.models.base import BaseModel
+
 # utils
 def md5(data):
     return hashlib.md5(str(data).encode()).hexdigest()
-
-class StackUser(pydantic.BaseModel):
-    access_key: str
-    secret_key: str
-    name: str
-    id: str
-
-    class Config:
-        allow_mutation = False
-
-    def __repr__(self):
-        return f'<StackUser: name={self.name!r}>'
-
-class StackService(object):
-    def __init__(self, name, session):
-        self.name = name
-        self.session = session
-
-    def __repr__(self):
-        return f'<StackService: name={self.name!r} stack={self.session.stack.name!r}>'
-
-class StackSession(object):
-    def __init__(self, stack, user):
-        self.stack = stack
-        self.user = user
-
-    def __repr__(self):
-        return f'<StackSession: stack={self.stack.name!r} user={self.user.name!r}>'
-
-    def service(self, name, *args, **kwargs):
-        return self.stack.get_service(name)(name, self, *args, **kwargs)
 
 class Stack(object):
     __ticker = 0
@@ -138,4 +109,52 @@ class Stack(object):
         return access_key in self.__users
 
     def session(self, user):
-        return StackSession(self, user)
+        return StackSession \
+        (
+            stack = self,
+            user = user,
+        )
+
+class StackUser(BaseModel):
+    access_key: str
+    secret_key: str
+    name: str
+    id: str
+
+    def __repr__(self):
+        return super().__repr__ \
+        (
+            name = self.name,
+        )
+
+class StackSession(BaseModel):
+    stack: Stack
+    user: StackUser
+
+    def __repr__(self):
+        return super().__repr__ \
+        (
+            stack = self.stack.name,
+            user  = self.user.name,
+        )
+
+    def service(self, name, **kwargs):
+        service_class = self.stack.get_service(name)
+
+        return service_class \
+        (
+            name    = name,
+            session = self,
+            **kwargs,
+        )
+
+class StackService(BaseModel):
+    name: str
+    session: StackSession
+
+    def __repr__(self):
+        return super().__repr__ \
+        (
+            name  = self.name,
+            stack = self.session.stack.name,
+        )

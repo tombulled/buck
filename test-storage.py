@@ -1,6 +1,8 @@
 from buck import stack
 from buck.s3 import entities
 from buck.s3 import types
+# from buck.s3 import base
+from buck.s3 import S3Fs, S3Mem
 from pprint import pprint as pp
 import datetime
 
@@ -17,3 +19,12 @@ import datetime
 # r = entities.Region(code='nah')
 
 # o = entities.Object('a/b', b, datetime.datetime.now())
+
+# class S3(base.SimpleStorageService):
+#     def list_buckets(self):
+#         return []
+#
+
+# s = S3()
+
+# s = S3Mem()
