@@ -1,5 +1,5 @@
-from .... import service
-from ..... import exceptions
+from .... import service_session
+from .... import exceptions
 
 import abc
 
@@ -7,7 +7,7 @@ def generator(iterable):
     for item in iterable:
         yield item
 
-class SimpleStorageService(service.StackService, abc.ABC):
+class SimpleStorageServiceSession(service_session.StackServiceSession, abc.ABC):
     @abc.abstractmethod
     def list_buckets(self, **kwargs):
         return generator(())

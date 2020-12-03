@@ -1,18 +1,18 @@
 from . import model
-# from .user import StackUser
 from . import user
-# from .stack import Stack
 from . import stack
+
+from typing import Union
 
 class StackSession(model.Model):
     stack: stack.Stack
-    user: user.StackUser
+    user:  Union[user.StackUser, None]
 
     def __repr__(self):
         return super().__repr__ \
         (
             stack = self.stack.name,
-            user  = self.user.name,
+            user  = self.user and self.user.name,
         )
 
     def service(self, name, **kwargs):

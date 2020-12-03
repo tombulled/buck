@@ -11,28 +11,26 @@ router = fastapi.APIRouter \
 
 """
 
-NOTE: fs !
-
 TODO:
+    * Make StackError which raises a service error
+        * e.g: StackError [S3] Invalid bucket name
     * stack.Stack needs major improvements
-    * Make entire project stack-focused? - Each service would have its own api (router) [in this case only one]
-        ... but room for expansion...
+    * Need to store bucket owner
+    * Need to overwrite the default fastapi json errors: e.g. GET /bucket_name/
+    * stack.model and stack.services.s3.models.base shouldn't both exist
+    * dependencies.py needs a nice sortout
+    * Handle a generic Exception being raised in AwsExceptionHandlerMiddleware more appropriately (use rich?)
 
-    * Use 'arrow' for datetime stuffs
-
-    * Change all actions to use new: return {'ListAllMyBucketsResult': data}
-    * Update responses.AwsErrorResponse to use ^^^
+    * Use poetry!
+        * Use rich for those beautiful errors atleast?
+    * Ensure all errors (from constants.ERRORS) are being used appropriately
+    * Remove references to aws (replace with 'stack')
+    * Should I be avoiding inheriting from starlette.middleware.base.BaseHTTPMiddleware ?
+    * Improve responses.RangedStreamingResponse to get the request object itself so can be used as response_class
     * Apply s3 dependency at router level so each method doesn't need to declare it.
-    * Make mem implementation use in-memory file system!
-        * And make current fs.py use pyfilesystem2
-    * Make all SimpleStorageService's inherit from abc.ABC so functionality is clearly defined
-        * Make all high-levels be wrapped to validate arguments
-
-    * Fix package structure for .s3
-    * Should anonymous user be allocated random use?
     * Flesh out all required headers etc. for simple methods
     * AWS CLI fails on create-bucket when it returns status_code:307
-    * Still not happy with how validation is carried out :/
+    * Still still still not happy with how validation is carried out :/
 """
 
 @router.get('/')
@@ -40,27 +38,28 @@ def list_buckets \
         (
             s3 = fastapi.Depends(dependencies.s3),
         ):
-    data = \
+    return \
     {
-        'Buckets': \
+        'ListAllMyBucketsResult': \
         {
-            'Bucket': \
-            [
-                {
-                    'Name': bucket.name,
-                    'CreationDate': str(bucket.creation_date),
-                }
-                for bucket in s3.list_buckets()
-            ],
-        },
-        'Owner': \
-        {
-            'DisplayName': s3.session.user.name,
-            'ID': s3.session.user.id,
+            'Buckets': \
+            {
+                'Bucket': \
+                [
+                    {
+                        'Name':         bucket.name,
+                        'CreationDate': bucket.creation_date,
+                    }
+                    for bucket in s3.list_buckets()
+                ],
+            },
+            'Owner': \
+            {
+                'DisplayName': s3.user and s3.user.name,
+                'ID':          s3.user and s3.user.id,
+            },
         },
     }
-
-    return {'ListAllMyBucketsResult': data}
 
 @router.put('/{bucket_name}', response_class = responses.RedirectResponse)
 def create_bucket \
@@ -68,14 +67,11 @@ def create_bucket \
             bucket_name: str,
             s3 = fastapi.Depends(dependencies.s3),
         ):
-    # raise Exception('ha')
-    # bucket_name = BucketName(bucket_name)
-
     s3.create_bucket(bucket_name)
 
     return f'/{bucket_name}'
 
-@router.head('/{bucket_name}')
+@router.head('/{bucket_name}', response_class = responses.Response)
 def head_bucket \
         (
             bucket_name: str,
@@ -90,9 +86,7 @@ def head_bucket \
         expected_owner = expected_bucket_owner,
     )
 
-    return fastapi.Response()
-
-@router.delete('/{bucket_name}')
+@router.delete('/{bucket_name}', response_class = responses.StatusResponse)
 def delete_bucket \
         (
             bucket_name: str,
@@ -100,9 +94,9 @@ def delete_bucket \
         ):
     s3.delete_bucket(bucket_name)
 
-    return fastapi.Response(status_code = 204)
+    return 204
 
-@router.put('/{bucket_name}/{object_key:path}')
+@router.put('/{bucket_name}/{object_key:path}', response_class = responses.Response)
 async def put_object \
         (
             request: fastapi.Request,
@@ -113,8 +107,6 @@ async def put_object \
     request_body = await request.body()
 
     s3.put_object(bucket_name, object_key, request_body)
-
-    return fastapi.Response()
 
 @router.get('/{bucket_name}/{object_key:path}')
 def get_object \
@@ -128,7 +120,7 @@ def get_object \
 
     return responses.RangedStreamingResponse(request, object_data)
 
-@router.delete('/{bucket_name}/{object_key:path}')
+@router.delete('/{bucket_name}/{object_key:path}', response_class = responses.StatusResponse)
 def delete_object \
         (
             bucket_name: str,
@@ -137,9 +129,9 @@ def delete_object \
         ):
     s3.delete_object(bucket_name, object_key)
 
-    return fastapi.Response(status_code = 204)
+    return 204
 
-@router.head('/{bucket_name}/{object_key:path}')
+@router.head('/{bucket_name}/{object_key:path}', response_class = responses.Response)
 def head_object \
         (
             bucket_name: str,
@@ -147,8 +139,6 @@ def head_object \
             s3 = fastapi.Depends(dependencies.s3),
         ):
     s3.head_object(bucket_name, object_key)
-
-    return fastapi.Response()
 
 """
 @router.post('/{bucket_name}')

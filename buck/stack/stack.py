@@ -1,6 +1,6 @@
 from . import utils
 # from .session import StackSession
-from . import session
+# from . import session
 from . import user
 # from .user import StackUser
 
@@ -11,12 +11,12 @@ class Stack(object):
     __users = {}
     __services = {}
 
-    # users: list = []
-    # service
     name = None
+    anonymous_access = False
 
-    def __init__(self, name = 'stack'):
+    def __init__(self, name = 'stack', *, anonymous_access: bool = False):
         self.name = name
+        self.anonymous_access = anonymous_access
 
     def __repr__(self):
         stack_name = self.name
@@ -69,8 +69,8 @@ class Stack(object):
 
         return stack_user
 
-    def add_service(self, name, cls):
-        self.__services[name] = cls
+    def add_service(self, service):
+        self.__services[service.name] = service
 
     def head_service(self, name):
         return name in self.__services
@@ -80,14 +80,8 @@ class Stack(object):
             del self.__services[name]
 
     def list_services(self):
-        for service_name, service_cls in self.__services.items():
-            service_data = \
-            {
-                'name': service_name,
-                'class': service_cls,
-            }
-
-            yield service_data
+        for service in self.__services.values():
+            yield service
 
     def get_service(self, name):
         return self.__services.get(name)
@@ -103,9 +97,12 @@ class Stack(object):
     def head_user(self, access_key):
         return access_key in self.__users
 
-    def session(self, user):
-        return session.StackSession \
-        (
-            stack = self,
-            user  = user,
-        )
+    def service(self, name: str, user: user.StackUser = None):
+        return self.__services.get(name).session(user)
+
+    # def session(self, user: user.StackUser = None):
+    #     return session.StackSession \
+    #     (
+    #         stack = self,
+    #         user  = user,
+    #     )

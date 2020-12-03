@@ -1,4 +1,4 @@
-from ..... import exceptions
+from .... import exceptions
 
 from . import fs
 from .. import types
@@ -17,7 +17,7 @@ def catch(type, error):
 BucketName = catch(types.BucketName, 'InvalidBucketName')
 ObjectKey  = catch(types.BucketName, 'InvalidRequest')
 
-class SimpleStorageService(fs.SimpleStorageService):
+class SimpleStorageServiceSession(fs.SimpleStorageServiceSession):
     def list_buckets(self, **kwargs):
         return super().list_buckets(**kwargs)
 

@@ -1,25 +1,24 @@
 from . import abc
 from .. import models
-from ..... import exceptions
+from .... import exceptions
 
 import fs
 import pathlib
 
 from fs.base import FS
 
-class SimpleStorageService(abc.SimpleStorageService):
+class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
     fs: FS
     region: models.Region = models.Region('us-east-2')
 
-    # def __init__(self, *, name, session, fs: FS):
-    #     super().__init__ \
-    #     (
-    #         name    = name,
-    #         session = session,
-    #     )
-    #
-    #     self.fs = fs
-    #     self.region = models.Region('us-east-2')
+    def __init__(self, *, service, stack, user):
+        super().__init__ \
+        (
+            service = service,
+            stack   = stack,
+            user    = user,
+            fs      = service.fs,
+        )
 
     def list_buckets(self, **kwargs):
         children = self.fs.glob('*/')

@@ -7,6 +7,17 @@ import os
 from typing import IO, Generator
 import io
 
+class Response(starlette.responses.Response): pass
+
+class StatusResponse(starlette.responses.Response):
+    def __init__(self, **kwargs):
+        status_code = kwargs.get('content')
+
+        super().__init__(status_code = status_code)
+
+    def render(self, content: dict) -> bytes:
+        return b''
+
 class RedirectResponse(starlette.responses.RedirectResponse):
     def __init__(self, **kwargs):
         url = kwargs.get('content')

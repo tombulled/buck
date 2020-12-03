@@ -44,17 +44,36 @@ def amz_headers(request: fastapi.Request):
 
     return requests.structures.CaseInsensitiveDict(headers)
 
-def stack(request: fastapi.Request):
-    return api.stack
+def request_attr(name: str, default = None):
+    def wrapper(request: fastapi.Request):
+        return getattr(request, name, default)
 
-def session(request: fastapi.Request):
-    return state('session')(request)
+    return wrapper
+
+def user(request: fastapi.Request):
+    return state('user')(request)
+
+def api(request: fastapi.Request):
+    return request_attr('app')(request)
+
+def stack(request: fastapi.Request):
+    # print(request)
+    # print(dir(request))
+    # print(api(request))
+    return attr('stack')(request)
+
+# def session(request: fastapi.Request):
+#     return state('session')(request)
 
 def service(name):
     def wrapper(request: fastapi.Request):
-        return session(request).service(name)
+        return stack(request).get_service(name)
 
     return wrapper
 
 def s3(request: fastapi.Request):
-    return service('s3')(request)
+    return service('s3')(request).create_session \
+    (
+        stack = stack(request),
+        user  = user(request),
+    )
