@@ -1,4 +1,6 @@
 from ..types import ObjectKey, DateTime
+# from ..types import ObjectKey
+# from .datetime import DateTime
 from .bucket import Bucket
 from . import base
 # from . import validation
@@ -24,6 +26,8 @@ class Object(base.BaseModel):
             key                = str(ObjectKey(key)),
             bucket             = bucket,
             arn                = f'{bucket.arn!s}:{key!s}',
+            # last_modified_date = DateTime.fromdatetime(last_modified_date),
+            # last_modified_date = DateTime(last_modified_date),
             last_modified_date = DateTime.fromdatetime(last_modified_date),
         )
 

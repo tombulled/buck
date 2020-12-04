@@ -1,4 +1,6 @@
 from ..types import BucketName, DateTime
+# from ..types import BucketName
+# from .datetime import DateTime
 from .region import Region
 from . import base
 # from . import validation
@@ -24,6 +26,7 @@ class Bucket(base.BaseModel):
             name          = str(BucketName(name)),
             region        = region,
             arn           = f'arn:aws:s3::{name!s}',
+            # creation_date = DateTime(creation_date),
             creation_date = DateTime.fromdatetime(creation_date),
         )
 
