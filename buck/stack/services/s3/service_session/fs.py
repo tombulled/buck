@@ -75,7 +75,7 @@ class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
         #     exist_ok = True,
         # )
 
-        with s3.open(str(path), 'wb') as file:
+        with self.fs.open(str(path), 'wb') as file:
             file.write(object_data)
 
     def get_object(self, bucket_name: str, object_key: str, **kwargs):
@@ -112,7 +112,7 @@ class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
 
         object_path = bucket_dir.make_path(object_key)
 
-        if not self.fs.is_file(object_path):
+        if not self.fs.isfile(object_path):
             return
 
         self.fs.remove(object_path)
@@ -131,12 +131,10 @@ class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
     def head_object(self, bucket_name: str, object_key: str, **kwargs):
         self.head_bucket(bucket_name)
 
-        bucket_dir = self.fs.getdetails(bucket_name)
+        object_path = str(pathlib.Path(bucket_name).joinpath(object_key))
 
-        object_path = bucket_dir.make_path(object_key)
-
-        if self.fs.is_dir(object_path):
+        if self.fs.isdir(object_path):
             raise exceptions.S3Error('InvalidRequest')
 
-        if not self.fs.is_file(object_path):
+        if not self.fs.isfile(object_path):
             raise exceptions.S3Error('NoSuchKey')

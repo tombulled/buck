@@ -43,11 +43,25 @@ class Api(fastapi.FastAPI):
             secret_key = secret_key,
         )
 
-    def serve(self, host: str = '127.0.0.1', port: int = 8000):
+    def serve(self, host: str = '127.0.0.1', port: int = 8000, **kwargs):
         uvicorn.run \
         (
             app       = self,
             host      = host,
             port      = port,
             log_level = 'info',
+            **kwargs,
         )
+
+        '''
+        # Use hypercorn instead
+        import asyncio
+        from hypercorn.config import Config
+        from hypercorn.asyncio import serve
+
+        config = Config()
+
+        config.bind = [f'{host}:{port}']
+
+        asyncio.run(serve(self, Config()))
+        '''

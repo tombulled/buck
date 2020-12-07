@@ -11,31 +11,21 @@ router = fastapi.APIRouter \
 
 """
 TODO:
-    * Yes. make this a separate package.
-
-    * Use pydantic's inspect to inspect typer main for cli
-        * Then use rich to style a help message
-        * That's all! then in main() if --help, print the helper message
-        * --help and --version are implied also auto hides the --install-completion
-        * Consider making this work for commands as well (make some simple testers)
-        * I guess I'll end up wrapping typer
-            * my_typer.run(cli)
-
     * Make StackError which raises a service error
         * e.g: StackError [S3] Invalid bucket name
-    * Can make a better cli (colour! cleo?)
-    * Surpress uvicorns output so can print more helpful stuffs?
-        * e.g. List-Buckets Admin ... (use rich)
     * stack.Stack needs major improvements
     * Need to store bucket owner
     * Need to overwrite the default fastapi json errors: e.g. GET /bucket_name/
-    * stack.model and stack.services.s3.models.base shouldn't both exist
+    * stack.model and stack.services.s3.models.base shouldn't both exist?
     * dependencies.py needs a nice sortout
     * Handle a generic Exception being raised in AwsExceptionHandlerMiddleware more appropriately (use rich?)
         * Can i really not make this an actual exception handler?
 
+    * Surpress uvicorns output so can print more helpful stuffs?
+        * e.g. List-Buckets Admin ... (use rich)
+
     * Use poetry!
-        * Use rich for those beautiful errors atleast?
+    * Use rich for those beautiful errors atleast?
     * Ensure all errors (from constants.ERRORS) are being used appropriately
     * Remove references to aws (replace with 'stack')
     * Should I be avoiding inheriting from starlette.middleware.base.BaseHTTPMiddleware ?
@@ -44,6 +34,9 @@ TODO:
     * Flesh out all required headers etc. for simple methods
     * AWS CLI fails on create-bucket when it returns status_code:307
     * Still still still not happy with how validation is carried out :/
+
+NOTES:
+    * Uvicorn strips response body from all HEAD requests (so does hypercorn)
 """
 
 @router.get('/')

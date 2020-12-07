@@ -2,6 +2,23 @@ import click.exceptions
 import sys
 import typer
 
+class BadOptionUsage(click.exceptions.BadOptionUsage):
+    def show(self, file = None):
+        echo = lambda *args, **kwargs: typer.secho \
+        (
+            *args,
+            nl = False,
+            file = file or sys.stderr,
+            **kwargs,
+        )
+
+        echo('ERROR ', fg='bright_red')
+        echo(f'[{self.__class__.__name__}] ', fg='bright_blue')
+
+        echo('An argument is required for option: ')
+        echo(self.option_name, fg='cyan')
+        echo('\n')
+
 class NoSuchOption(click.exceptions.NoSuchOption):
     def show(self, file = None):
         echo = lambda *args, **kwargs: typer.secho \
@@ -35,6 +52,9 @@ class MissingParameter(click.exceptions.MissingParameter):
             **kwargs,
         )
 
+        echo('ERROR ', fg='bright_red')
+        echo(f'[{self.__class__.__name__}] ', fg='bright_blue')
+
         echo(f'Missing {self.param.param_type_name}: ')
         echo(self.param.name, fg='cyan')
         echo('\n')
@@ -49,6 +69,9 @@ class BadParameter(click.exceptions.BadParameter):
             **kwargs,
         )
 
+        echo('ERROR ', fg='bright_red')
+        echo(f'[{self.__class__.__name__}] ', fg='bright_blue')
+
         echo('Invalid value for: ')
         echo(self.param.opts[0], fg='cyan')
 
@@ -58,4 +81,15 @@ class BadParameter(click.exceptions.BadParameter):
 
 class UsageError(click.exceptions.UsageError):
     def show(self, file = None):
-        typer.secho(self.format_message(), file = file or sys.stderr)
+        echo = lambda *args, **kwargs: typer.secho \
+        (
+            *args,
+            nl = False,
+            file = file or sys.stderr,
+            **kwargs,
+        )
+
+        echo('ERROR ', fg='bright_red')
+        echo(f'[{self.__class__.__name__}] ', fg='bright_blue')
+
+        echo(self.format_message())

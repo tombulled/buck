@@ -4,6 +4,7 @@ import click.exceptions
 def patch_click_exceptions():
     patched_exceptions = \
     (
+        exceptions.BadOptionUsage,
         exceptions.NoSuchOption,
         exceptions.MissingParameter,
         exceptions.BadParameter,

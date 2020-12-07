@@ -1,6 +1,4 @@
-from .cli import Cli
+from .console import app as cli
 
 if __name__ == '__main__':
-    cli = Cli()
-
     cli()

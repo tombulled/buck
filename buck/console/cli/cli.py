@@ -1,19 +1,34 @@
+from . import utils
+from . import exceptions
+
 import typer
 import inspect
 import rich.console
 import rich.table
 import functools
-from . import utils
+import rich
+import rich.style
+from pathlib import Path
 
 utils.patch_click_exceptions()
 
-class BaseCli(typer.Typer):
+class Cli(typer.Typer):
     def __init__(self, *args, version: str = None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.info.version = version
 
         self.console = rich.console.Console()
+
+    def __repr__(self):
+        render = lambda string, color: rich.style.Style(color=color).render(string)
+
+        return '<{class_name}: name={name}, version={version}>'.format \
+        (
+            class_name = render(self.__class__.__name__, 'cyan'),
+            name = render(repr(self.info.name), 'bright_green'),
+            version = render(self.info.version, 'bright_blue'),
+        )
 
     def print_help(self):
         # padding and colours should be attributes
@@ -35,6 +50,7 @@ class BaseCli(typer.Typer):
                 int:        'bright_cyan',
                 bool:       'bright_blue',
                 type(None): 'yellow',
+                Path:       'bright_magenta',
             }
 
             type_colour = type_colours.get(input_type)
@@ -60,8 +76,11 @@ class BaseCli(typer.Typer):
 
         command = self.registered_commands[0]
 
+        examples = command.examples
         main   = command.callback
         description = main.__doc__
+
+        examples.append(((), {'help': True}))
 
         signature = inspect.signature(main)
 
@@ -81,6 +100,8 @@ class BaseCli(typer.Typer):
             elif (parameter.KEYWORD_ONLY or parameter.POSITIONAL_OR_KEYWORD) \
                     and not isinstance(parameter_default, (typer.models.OptionInfo, typer.models.ArgumentInfo)):
                 parameter_default = typer.Option(parameter_default)
+
+            if parameter_default.hidden: continue # cool
 
             if isinstance(parameter_default, typer.models.ArgumentInfo):
                 row(table_arguments, parameter_name, parameter_annotation, parameter_default.help, parameter_default.default)
@@ -122,8 +143,66 @@ class BaseCli(typer.Typer):
             self.console.print(table)
             print()
 
+        table = t('examples', 1)
+
+        def example(*arguments, **options):
+            type_colours = \
+            {
+                str:        'bright_green',
+                int:        'bright_cyan',
+                bool:       'bright_blue',
+                type(None): 'yellow',
+            }
+
+            data = ''
+
+            for argument in arguments:
+                argument_colour = type_colours.get(type(argument))
+
+                if isinstance(argument, str) and ' ' in argument:
+                    argument = repr(argument)
+
+                data += f'[{argument_colour}]{argument!s}[/{argument_colour}] '
+
+            for option_key, option_val in options.items():
+                option_colour = type_colours.get(type(option_val))
+
+                if isinstance(option_val, str) and ' ' in option_val:
+                    option_val = repr(option_val)
+
+                data += f'[cyan]--{option_key}[/cyan]'
+
+                if not isinstance(option_val, bool):
+                    data += f' [{option_colour}]{option_val!s}[/{option_colour}]'
+
+                data += ' '
+
+            table.add_row \
+            (
+                f'[blue]$[/blue] [i]{self.info.name} {data}[/i]',
+            )
+
+        for arguments, options in examples:
+            example(*arguments, **options)
+
+        self.console.print(table)
+
+        print()
+
     def print_version(self):
         print(self.info.version)
+
+    def example(self, *arguments, **options):
+        def wrapper(func):
+            registered_command = self.registered_commands[-1]
+
+            registered_command.examples = getattr(registered_command, 'examples', [])
+
+            registered_command.examples.append((arguments, options))
+
+            return func
+
+        return wrapper
 
     def command(self, *args, **kwargs):
         decorator = super().command(*args, **kwargs)

@@ -3,6 +3,7 @@ import typer
 from .base import BaseCli
 from .. import __name__, __version__
 from ..api import Api
+from pathlib import Path
 
 class Cli(BaseCli):
     def __init__(self):
@@ -15,13 +16,25 @@ class Cli(BaseCli):
         @self.command()
         def main \
                 (
-                    dir:     str  = typer.Argument('.',       help = 'Bucket storage directory'),
+                    dir:     Path  = typer.Argument \
+                    (
+                        '.',
+                        help = 'Bucket storage directory',
+                        exists = False,
+                        file_okay = False,
+                        dir_okay = True,
+                        writable = False,
+                        readable = False,
+                        resolve_path = False,
+                    ),
                     port:    int  = typer.Option(8000,        help = 'Port to bind server to'),
                     host:    str  = typer.Option('127.0.0.1', help = 'Host to bind server to'),
                     auth:    str  = typer.Option(None,        help = 'Client auth key(s)'),
                     virtual: bool = typer.Option(False,       help = 'Whether to use in-memory mode'),
                 ):
             '''Blazing fast self-hosted object storage for the 21st century'''
+
+            print(dir)
 
             api = Api \
             (

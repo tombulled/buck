@@ -15,7 +15,7 @@ def catch(type, error):
 
 # NOTE: This current model doesn't work for specific errors, e.g. KeyTooLongError
 BucketName = catch(types.BucketName, 'InvalidBucketName')
-ObjectKey  = catch(types.BucketName, 'InvalidRequest')
+ObjectKey  = catch(types.ObjectKey, 'InvalidRequest')
 
 class SimpleStorageServiceSession(fs.SimpleStorageServiceSession):
     def list_buckets(self, **kwargs):
