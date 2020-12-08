@@ -1,5 +1,1 @@
-from buck.cli import Cli
-
-cli = Cli()
-
-cli()
+from buck.console import app as cli

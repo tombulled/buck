@@ -57,13 +57,7 @@ def api(request: fastapi.Request):
     return request_attr('app')(request)
 
 def stack(request: fastapi.Request):
-    # print(request)
-    # print(dir(request))
-    # print(api(request))
     return attr('stack')(request)
-
-# def session(request: fastapi.Request):
-#     return state('session')(request)
 
 def service(name):
     def wrapper(request: fastapi.Request):

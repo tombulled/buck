@@ -1,9 +1,6 @@
 from . import router
 from . import middleware
-# from . import responses
-# from . import exceptions
 from .. import stack
-# from ..stack import exceptions
 from ..stack import services
 
 import fastapi
@@ -52,16 +49,3 @@ class Api(fastapi.FastAPI):
             log_level = 'info',
             **kwargs,
         )
-
-        '''
-        # Use hypercorn instead
-        import asyncio
-        from hypercorn.config import Config
-        from hypercorn.asyncio import serve
-
-        config = Config()
-
-        config.bind = [f'{host}:{port}']
-
-        asyncio.run(serve(self, Config()))
-        '''

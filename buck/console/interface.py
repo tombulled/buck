@@ -1,9 +1,9 @@
 from . import cli
+from .. import api
 from .. import __name__, __version__
-from ..api import Api
 from pathlib import Path
 
-app = cli.Cli \
+app: cli.Cli = cli.Cli \
 (
     name    = __name__,
     version = __version__,
@@ -35,7 +35,7 @@ def main \
         ):
     '''Blazing fast self-hosted object storage for the 21st century'''
 
-    api = Api \
+    api: api.Api = api.Api \
     (
         anonymous = auth is None,
         path      = None if virtual else str(dir),
