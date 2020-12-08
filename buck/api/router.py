@@ -11,6 +11,9 @@ router = fastapi.APIRouter \
 
 """
 TODO:
+    * Make boto client wrapper?
+        * import buck
+        * client = buck.client(host=..., port=...)
     * Make StackError which raises a service error
         * e.g: StackError [S3] Invalid bucket name
     * stack.Stack needs major improvements
@@ -21,13 +24,10 @@ TODO:
     * Handle a generic Exception being raised in AwsExceptionHandlerMiddleware more appropriately (use rich?)
         * Can i really not make this an actual exception handler?
 
-    * Surpress uvicorns output so can print more helpful stuffs?
-        * e.g. List-Buckets Admin ... (use rich)
-
     * Use poetry!
-    * Use rich for those beautiful errors atleast?
+    * Use rich for beautiful errors?
     * Ensure all errors (from constants.ERRORS) are being used appropriately
-    * Remove references to aws (replace with 'stack')
+    * Remove references to aws and amz (replace with 'stack')
     * Should I be avoiding inheriting from starlette.middleware.base.BaseHTTPMiddleware ?
     * Improve responses.RangedStreamingResponse to get the request object itself so can be used as response_class
     * Apply s3 dependency at router level so each method doesn't need to declare it.

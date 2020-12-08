@@ -35,7 +35,7 @@ def main \
         ):
     '''Blazing fast self-hosted object storage for the 21st century'''
 
-    api: api.Api = api.Api \
+    api_app: api.Api = api.Api \
     (
         anonymous = auth is None,
         path      = None if virtual else str(dir),
@@ -50,14 +50,14 @@ def main \
         else:
             access_key, secret_key, *_ = chunks
 
-        api.add_user \
+        api_app.add_user \
         (
             name       = 'User',
             access_key = access_key,
             secret_key = secret_key,
         )
 
-    api.serve \
+    api_app.serve \
     (
         host   = host,
         port   = port,
