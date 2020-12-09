@@ -11,9 +11,6 @@ router = fastapi.APIRouter \
 
 """
 TODO:
-    * Make boto client wrapper?
-        * import buck
-        * client = buck.client(host=..., port=...)
     * Make StackError which raises a service error
         * e.g: StackError [S3] Invalid bucket name
     * stack.Stack needs major improvements
