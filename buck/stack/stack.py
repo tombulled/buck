@@ -1,8 +1,5 @@
 from . import utils
-# from .session import StackSession
-# from . import session
 from . import user
-# from .user import StackUser
 
 import secrets
 
