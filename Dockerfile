@@ -12,4 +12,5 @@ RUN mkdir data
 
 EXPOSE 8080
 
-CMD ["python", "-m", "buck", "data", "--port", "8080", "--host", "0.0.0.0"]
+ENTRYPOINT ["python", "-m", "buck"]
+CMD ["data", "--port", "8080", "--host", "0.0.0.0"]
