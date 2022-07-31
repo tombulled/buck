@@ -3,17 +3,11 @@ from . import stack
 from . import service
 from . import user
 
-from typing import Union
+import dataclasses
+from typing import Optional
 
-class StackServiceSession(model.Model):
+@dataclasses.dataclass
+class StackServiceSession:
     service: service.StackService
     stack: stack.Stack
-    user: Union[user.StackUser, None]
-
-    def __repr__(self):
-        return super().__repr__ \
-        (
-            stack   = self.stack.name,
-            service = self.service.name,
-            user    = self.user and self.user.name,
-        )
+    user: Optional[user.StackUser]

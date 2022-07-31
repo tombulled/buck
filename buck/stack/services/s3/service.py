@@ -1,3 +1,4 @@
+import dataclasses
 from fs.base import FS
 import fs
 
@@ -5,6 +6,7 @@ from .service_session import SimpleStorageServiceSession
 
 from ... import service
 
+@dataclasses.dataclass(init=False)
 class SimpleStorageService(service.StackService):
     fs: FS
 
@@ -12,6 +14,7 @@ class SimpleStorageService(service.StackService):
         super().__init__ \
         (
             name    = 's3',
-            session = SimpleStorageServiceSession,
-            fs      = fs.open_fs(path or 'mem://'),
+            session = SimpleStorageServiceSession
         )
+
+        self.fs = fs.open_fs(path or 'mem://')

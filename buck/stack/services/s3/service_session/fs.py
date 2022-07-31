@@ -1,3 +1,4 @@
+import dataclasses
 from . import abc
 from .. import models
 from .... import exceptions
@@ -7,6 +8,7 @@ import pathlib
 
 from fs.base import FS
 
+@dataclasses.dataclass(init=False)
 class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
     fs: FS
     region: models.Region = models.Region('us-east-2')
@@ -17,8 +19,9 @@ class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
             service = service,
             stack   = stack,
             user    = user,
-            fs      = service.fs,
         )
+
+        self.fs = service.fs
 
     def _bucket_exists(self, name: str):
         return self.fs.isdir(name)
