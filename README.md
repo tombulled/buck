@@ -39,7 +39,7 @@ $ aws --endpoint-url "http://localhost:8080/" s3 ls
 #### Upload Object
 ```sh
 $ echo "test!" > file.txt
-$ aws --endpoint-url "http://localhost:8080/" s3 file.txt s3://bucket/
+$ aws --endpoint-url "http://localhost:8080/" s3 cp file.txt s3://bucket/
 upload: file.txt to s3://bucket/file.txt
 ```
 
