@@ -3,6 +3,7 @@ from . import user
 
 import secrets
 
+
 class Stack(object):
     __ticker = 0
     __users = {}
@@ -11,7 +12,7 @@ class Stack(object):
     name = None
     anonymous_access = False
 
-    def __init__(self, name = 'stack', *, anonymous_access: bool = False):
+    def __init__(self, name="stack", *, anonymous_access: bool = False):
         self.name = name
         self.anonymous_access = anonymous_access
 
@@ -20,7 +21,7 @@ class Stack(object):
         total_users = len(self.__users)
         total_services = len(self.__services)
 
-        return f'<Stack: name={stack_name!r} users={total_users} services={total_services}>'
+        return f"<Stack: name={stack_name!r} users={total_users} services={total_services}>"
 
     @staticmethod
     def _gen_key():
@@ -37,7 +38,7 @@ class Stack(object):
         return self._hash()
 
     def _gen_user_name(self):
-        return f'User-{self._hash()[-5:]}'
+        return f"User-{self._hash()[-5:]}"
 
     def _tick(self):
         self.__ticker += 1
@@ -50,13 +51,12 @@ class Stack(object):
     def get_user(self, access_key):
         return self.__users.get(access_key)
 
-    def add_user(self, **kwargs): # Check if already exists etc.
-        kwargs = \
-        {
-            'name': self._gen_user_name(),
-            'access_key': self._gen_access_key(),
-            'secret_key': self._gen_key(),
-            'id': self._gen_user_id(),
+    def add_user(self, **kwargs):  # Check if already exists etc.
+        kwargs = {
+            "name": self._gen_user_name(),
+            "access_key": self._gen_access_key(),
+            "secret_key": self._gen_key(),
+            "id": self._gen_user_id(),
             **kwargs,
         }
 

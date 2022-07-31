@@ -1,5 +1,6 @@
 import pydantic
 
+
 class Model(pydantic.BaseModel):
     class Config:
         allow_mutation = False
@@ -11,15 +12,12 @@ class Model(pydantic.BaseModel):
 
         class_name = self.__class__.__name__
 
-        if not fields: return f'<{class_name} />'
+        if not fields:
+            return f"<{class_name} />"
 
-        attributes = ' '.join \
-        (
-            f'{key}={val!r}'
-            for key, val in fields.items()
-        )
+        attributes = " ".join(f"{key}={val!r}" for key, val in fields.items())
 
-        return f'<{class_name}: {attributes}>'
+        return f"<{class_name}: {attributes}>"
 
     def __str__(self):
         return self.__repr__()

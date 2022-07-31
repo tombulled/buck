@@ -4,9 +4,8 @@ from . import dependencies
 import fastapi
 import fastapi.responses
 
-router = fastapi.APIRouter \
-(
-    default_response_class = responses.AwsResponse,
+router = fastapi.APIRouter(
+    default_response_class=responses.AwsResponse,
 )
 
 """
@@ -36,112 +35,109 @@ NOTES:
     * Uvicorn strips response body from all HEAD requests (so does hypercorn)
 """
 
-@router.get('/')
-def list_buckets \
-        (
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
-    return \
-    {
-        'ListAllMyBucketsResult': \
-        {
-            'Buckets': \
-            {
-                'Bucket': \
-                [
+
+@router.get("/")
+def list_buckets(
+    s3=fastapi.Depends(dependencies.s3),
+):
+    return {
+        "ListAllMyBucketsResult": {
+            "Buckets": {
+                "Bucket": [
                     {
-                        'Name':         bucket.name,
-                        'CreationDate': bucket.creation_date,
+                        "Name": bucket.name,
+                        "CreationDate": bucket.creation_date,
                     }
                     for bucket in s3.list_buckets()
                 ],
             },
-            'Owner': \
-            {
-                'DisplayName': s3.user and s3.user.name,
-                'ID':          s3.user and s3.user.id,
+            "Owner": {
+                "DisplayName": s3.user and s3.user.name,
+                "ID": s3.user and s3.user.id,
             },
         },
     }
 
-@router.put('/{bucket_name}', response_class = responses.RedirectResponse)
-def create_bucket \
-        (
-            bucket_name: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.put("/{bucket_name}", response_class=responses.RedirectResponse)
+def create_bucket(
+    bucket_name: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     s3.create_bucket(bucket_name)
 
-    return f'/{bucket_name}'
+    return f"/{bucket_name}"
 
-@router.head('/{bucket_name}', response_class = responses.Response)
-def head_bucket \
-        (
-            bucket_name: str,
-            s3 = fastapi.Depends(dependencies.s3),
-            headers = fastapi.Depends(dependencies.amz_headers),
-        ):
-    expected_bucket_owner = headers.get('expected-bucket-owner')
 
-    s3.head_bucket \
-    (
-        name           = bucket_name,
-        expected_owner = expected_bucket_owner,
+@router.head("/{bucket_name}", response_class=responses.Response)
+def head_bucket(
+    bucket_name: str,
+    s3=fastapi.Depends(dependencies.s3),
+    headers=fastapi.Depends(dependencies.amz_headers),
+):
+    expected_bucket_owner = headers.get("expected-bucket-owner")
+
+    s3.head_bucket(
+        name=bucket_name,
+        expected_owner=expected_bucket_owner,
     )
 
-@router.delete('/{bucket_name}', response_class = responses.StatusResponse)
-def delete_bucket \
-        (
-            bucket_name: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.delete("/{bucket_name}", response_class=responses.StatusResponse)
+def delete_bucket(
+    bucket_name: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     s3.delete_bucket(bucket_name)
 
     return 204
 
-@router.put('/{bucket_name}/{object_key:path}', response_class = responses.Response)
-async def put_object \
-        (
-            request: fastapi.Request,
-            bucket_name: str,
-            object_key: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.put("/{bucket_name}/{object_key:path}", response_class=responses.Response)
+async def put_object(
+    request: fastapi.Request,
+    bucket_name: str,
+    object_key: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     request_body = await request.body()
 
     s3.put_object(bucket_name, object_key, request_body)
 
-@router.get('/{bucket_name}/{object_key:path}')
-def get_object \
-        (
-            request: fastapi.Request,
-            bucket_name: str,
-            object_key: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.get("/{bucket_name}/{object_key:path}")
+def get_object(
+    request: fastapi.Request,
+    bucket_name: str,
+    object_key: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     object_data = s3.get_object(bucket_name, object_key)
 
     return responses.RangedStreamingResponse(request, object_data)
 
-@router.delete('/{bucket_name}/{object_key:path}', response_class = responses.StatusResponse)
-def delete_object \
-        (
-            bucket_name: str,
-            object_key: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.delete(
+    "/{bucket_name}/{object_key:path}", response_class=responses.StatusResponse
+)
+def delete_object(
+    bucket_name: str,
+    object_key: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     s3.delete_object(bucket_name, object_key)
 
     return 204
 
-@router.head('/{bucket_name}/{object_key:path}', response_class = responses.Response)
-def head_object \
-        (
-            bucket_name: str,
-            object_key: str,
-            s3 = fastapi.Depends(dependencies.s3),
-        ):
+
+@router.head("/{bucket_name}/{object_key:path}", response_class=responses.Response)
+def head_object(
+    bucket_name: str,
+    object_key: str,
+    s3=fastapi.Depends(dependencies.s3),
+):
     s3.head_object(bucket_name, object_key)
+
 
 """
 @router.post('/{bucket_name}')

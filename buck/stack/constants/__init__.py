@@ -1,2 +1,2 @@
 from .regions import REGIONS
-from .errors  import ERRORS
+from .errors import ERRORS
