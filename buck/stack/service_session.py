@@ -3,12 +3,12 @@ from . import stack
 from . import service
 from . import user
 
-from typing import Union
+from typing import Optional
 
 class StackServiceSession(model.Model):
     service: service.StackService
     stack: stack.Stack
-    user: Union[user.StackUser, None]
+    user: Optional[user.StackUser]
 
     def __repr__(self):
         return super().__repr__ \
