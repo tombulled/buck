@@ -3,6 +3,7 @@ from .... import exceptions
 from . import fs
 from .. import types
 
+
 def catch(type, error):
     class Wrapper(type):
         def __init__(self, value: str):
@@ -13,45 +14,44 @@ def catch(type, error):
 
     return Wrapper
 
+
 # NOTE: This current model doesn't work for specific errors, e.g. KeyTooLongError
-BucketName = catch(types.BucketName, 'InvalidBucketName')
-ObjectKey  = catch(types.ObjectKey, 'InvalidRequest')
+BucketName = catch(types.BucketName, "InvalidBucketName")
+ObjectKey = catch(types.ObjectKey, "InvalidRequest")
+
 
 class SimpleStorageServiceSession(fs.SimpleStorageServiceSession):
     def list_buckets(self, **kwargs):
         return super().list_buckets(**kwargs)
 
     def get_bucket(self, name: str, **kwargs):
-        return super().get_bucket \
-        (
+        return super().get_bucket(
             str(BucketName(name)),
             **kwargs,
         )
 
     def create_bucket(self, name: str, **kwargs):
-        return super().create_bucket \
-        (
+        return super().create_bucket(
             str(BucketName(name)),
             **kwargs,
         )
 
     def delete_bucket(self, name: str, **kwargs):
-        return super().delete_bucket \
-        (
+        return super().delete_bucket(
             str(BucketName(name)),
             **kwargs,
         )
 
     def head_bucket(self, name: str, **kwargs):
-        return super().head_bucket \
-        (
+        return super().head_bucket(
             str(BucketName(name)),
             **kwargs,
         )
 
-    def put_object(self, bucket_name: str, object_key: str, object_data: bytes, **kwargs):
-        return super().put_object \
-        (
+    def put_object(
+        self, bucket_name: str, object_key: str, object_data: bytes, **kwargs
+    ):
+        return super().put_object(
             str(BucketName(bucket_name)),
             str(ObjectKey(object_key)),
             object_data,
@@ -59,31 +59,27 @@ class SimpleStorageServiceSession(fs.SimpleStorageServiceSession):
         )
 
     def get_object(self, bucket_name: str, object_key: str, **kwargs):
-        return super().get_object \
-        (
+        return super().get_object(
             str(BucketName(bucket_name)),
             str(ObjectKey(object_key)),
             **kwargs,
         )
 
     def list_objects(self, bucket_name: str, **kwargs):
-        return super().list_objects \
-        (
+        return super().list_objects(
             str(BucketName(bucket_name)),
             **kwargs,
         )
 
     def delete_object(self, bucket_name: str, object_key: str, **kwargs):
-        return super().delete_object \
-        (
+        return super().delete_object(
             str(BucketName(bucket_name)),
             str(ObjectKey(object_key)),
             **kwargs,
         )
 
     def head_object(self, bucket_name: str, object_key: str, **kwargs):
-        return super().head_object \
-        (
+        return super().head_object(
             str(BucketName(bucket_name)),
             str(ObjectKey(object_key)),
             **kwargs,

@@ -1,5 +1,6 @@
 from .model import Model
 
+
 class StackUser(Model):
     access_key: str
     secret_key: str
@@ -7,7 +8,6 @@ class StackUser(Model):
     id: str
 
     def __repr__(self):
-        return super().__repr__ \
-        (
-            name = self.name,
+        return super().__repr__(
+            name=self.name,
         )

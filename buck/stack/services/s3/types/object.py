@@ -2,6 +2,7 @@ from . import base
 
 import string
 
+
 class ObjectKey(base.BaseType):
     @staticmethod
     def validate(value: str):
@@ -23,8 +24,8 @@ class ObjectKey(base.BaseType):
 
         value = str(value)
 
-        acceptable_chars = f'{string.ascii_letters}{string.digits}/!-_.*\'()'
+        acceptable_chars = f"{string.ascii_letters}{string.digits}/!-_.*'()"
 
         for char in value:
             if char not in acceptable_chars:
-                return f'Unsafe character: {char!r}'
+                return f"Unsafe character: {char!r}"
