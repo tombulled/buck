@@ -20,7 +20,6 @@ class SimpleStorageServiceSession(abc.SimpleStorageServiceSession):
             fs      = service.fs,
         )
 
-
     def _bucket_exists(self, name: str):
         return self.fs.isdir(name)
 
