@@ -8,7 +8,7 @@ RUN pip install poetry
 RUN poetry install
 RUN pip install .
 
-RUN mkdir data
+RUN mkdir data && mkdir data/bucket
 
 EXPOSE 8080
 
