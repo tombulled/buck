@@ -38,7 +38,7 @@ $ aws --endpoint-url "http://localhost:8080/" s3 ls
 
 #### Upload Object
 ```sh
-$ echo "test!" > file.txt
+$ echo "test" > file.txt
 $ aws --endpoint-url "http://localhost:8080/" s3 cp file.txt s3://bucket/
 upload: file.txt to s3://bucket/file.txt
 ```
@@ -48,7 +48,7 @@ upload: file.txt to s3://bucket/file.txt
 $ aws --endpoint-url "http://localhost:8080/" s3api get-object --bucket bucket --key file.txt object.txt
 {
     "AcceptRanges": "bytes",
-    "ContentLength": 6,
+    "ContentLength": 5,
     "ContentType": "text/plain; charset=utf-8",
     "Metadata": {}
 }
